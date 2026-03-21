@@ -1,0 +1,157 @@
+# 01_directory_structure — ディレクトリ構造
+
+協力者求むBOT のソースコード構造は、  
+「機能ごとにまとまりを作り、長期運用に耐える構造」を目的として設計されている。
+
+以下はプロジェクトの主要ディレクトリ構造である。
+
+---
+
+## /src
+
+### /src/bot
+BOT の起動処理を担当するレイヤー。  
+機能ロジックは持たず、以下の役割に限定される。
+
+- Discord クライアントの初期化  
+- イベントハンドラの登録  
+- interactionCreate のルーティング  
+- BOT のエントリーポイント（index.ts）
+
+---
+
+### /src/db
+データベースアクセスを担当するレイヤー。
+
+- PostgreSQL への接続処理  
+- クエリ実行のためのユーティリティ  
+- DB クライアントの初期化（client.ts）  
+- テスト用スクリプト（test.ts）
+
+---
+
+### /src/features
+機能単位でフォルダを分割し、  
+それぞれが独立して拡張できる構造になっている。
+
+---
+
+#### /src/features/admin
+管理者向けの機能をまとめたレイヤー。
+
+```
+/src/features/admin
+  ├─ commands
+  │    ├─ setup.ts      - 文明の基盤となるカテゴリ作成コマンド
+  │    └─ register.ts   - ユーザーの手動登録コマンド
+  ├─ admin.ts           - 管理者向け共通処理
+```
+
+---
+
+#### /src/features/quests
+クエスト（タスク）管理機能。
+
+```
+/src/features/quests
+  ├─ quest-create.ts
+  ├─ quest-create-modal.ts
+  ├─ quest-edit-button.ts
+  ├─ quest-edit-modal.ts
+  ├─ quest-complete-button.ts
+  ├─ quest-close-button.ts
+  └─ quest-embed.ts
+```
+
+- クエスト作成  
+- 編集  
+- 完了  
+- クローズ  
+- Embed 生成  
+- モーダル処理  
+など、クエストに関するすべての操作を担当する。
+
+---
+
+#### /src/features/ranking
+ランキング機能を構成する複数のサブモジュールを持つ。
+
+```
+/src/features/ranking
+  ├─ buttons
+  │    └─ ranking-button.ts
+  ├─ commands
+  │    ├─ ranking.ts
+  │    ├─ rankingInit.ts
+  │    └─ rankingWeekly.ts
+  ├─ embeds
+  │    ├─ rankingEmbed.ts
+  │    └─ weeklyReportEmbed.ts
+  ├─ services
+  │    ├─ rankingService.ts
+  │    └─ weeklyReportService.ts
+  ├─ setup
+  │    └─ createInitialRankingMessage.ts
+  ├─ update
+  │    ├─ updateRealtimeRanking.ts
+  │    └─ updateWeeklyRanking.ts
+  └─ utils
+```
+
+- ランキング計算  
+- ランキング表示  
+- 週次レポート生成  
+- 初期メッセージ作成  
+- ランキング更新処理  
+など、文明の「努力の可視化」を担う中核機能。
+
+---
+
+### /src/types
+- 共通で使用する TypeScript の型定義  
+- DB レコード型、ユーザー型など  
+- 例：user.ts
+
+---
+
+### /src/utils
+- プロジェクト全体で使用する汎用関数  
+- 例：getUser.ts、getCategoryId.ts  
+- 日付処理、フォーマット処理など
+
+---
+
+## /sql
+- DB スキーマ定義（schema.sql）  
+- マイグレーションや初期化用 SQL  
+
+---
+
+## /@docs
+- 仕様書（分割版）  
+- 統合仕様書生成用の素材  
+
+```
+/@docs
+  ├── 00_overview.md
+  ├── 01_directory_structure.md
+  ├── 02_db_schema.md
+  ├── 03_state_machine.md
+  ├── 04_commands.md
+  ├── 05_ui_spec.md
+  ├── 06_operation_flow.md
+  ├── 07_error_handling.md
+  └── 08_code_behavior/
+```
+
+---
+
+## /@docs/spec
+- 統合仕様書（spec_full.md）の出力先  
+- Git 管理しない（生成物のため）
+
+---
+
+## プロジェクトルート
+- build_spec.js（仕様書統合スクリプト）  
+- package.json  

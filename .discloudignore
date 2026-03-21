@@ -1,0 +1,9 @@
+node_modules
+src
+sql
+.git
+.gitignore
+tsconfig.json
+package-lock.json
+README.md
+deploy-commands.ts
