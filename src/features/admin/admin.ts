@@ -29,11 +29,27 @@ export const adminCommand = {
     const sub = interaction.options.getSubcommand();
     const targetUser = interaction.options.getUser("user", true);
 
-    // settings から category_id を取得
+    // 現在のチャンネルのカテゴリを取得
+    const categoryId = interaction.channel?.parentId;
+    if (!categoryId) {
+      return interaction.reply({
+        content: "このコマンドは文明カテゴリ内で実行してください。",
+        ephemeral: true,
+      });
+    }
+
+    // settings に存在する文明か確認
     const settingsRes = await db.query(
-      "SELECT category_id FROM settings LIMIT 1"
+      "SELECT 1 FROM settings WHERE category_id = $1",
+      [categoryId]
     );
-    const categoryId = settingsRes.rows[0].category_id;
+
+    if (settingsRes.rows.length === 0) {
+      return interaction.reply({
+        content: "このカテゴリは文明として登録されていません。",
+        ephemeral: true,
+      });
+    }
 
     // 実行者が文明BOTの管理者か確認
     const adminCheck = await db.query(
@@ -41,9 +57,9 @@ export const adminCommand = {
       [categoryId, interaction.user.id]
     );
 
-    if (adminCheck.rowCount === 0) {
+    if (adminCheck.rows.length === 0) {
       return interaction.reply({
-        content: "あなたは管理者ではありません。",
+        content: "あなたはこの文明の管理者ではありません。",
         ephemeral: true,
       });
     }
