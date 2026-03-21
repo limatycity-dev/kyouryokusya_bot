@@ -1,4 +1,3 @@
-// quest-create-modal.ts
 import { ModalSubmitInteraction, ChannelType } from "discord.js";
 import { db } from "../../db/client";
 import { createQuestEmbed } from "./quest-embed";
@@ -11,6 +10,7 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
     const title = interaction.fields.getTextInputValue("title");
     const description = interaction.fields.getTextInputValue("description");
 
+    // ポイント
     const pointsRaw = interaction.fields.getTextInputValue("points");
     const points = Number(pointsRaw);
 
@@ -21,22 +21,38 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
       });
     }
 
-    let rawType = interaction.fields.getTextInputValue("type")?.trim().toLowerCase();
-    const type = rawType === "loop" ? "loop" : "single";
-
-    const issuerId = interaction.user.id;
-
-    const categoryId = await getCategoryId(interaction.channel);
-
-    if (!categoryId) {
+    if (points <= 0) {
       return interaction.reply({
-        content: "カテゴリ内で実行してください。",
+        content: "ポイントは 1 以上の数値を入力してください。",
         ephemeral: true,
       });
     }
 
+    if (points > 9999) {
+      return interaction.reply({
+        content: "ポイントは 9999 以下で入力してください。",
+        ephemeral: true,
+      });
+    }
+
+    // type（仕様書準拠：single / loop）
+    const rawType = interaction.fields.getTextInputValue("type")?.trim().toLowerCase();
+    const type = rawType === "loop" ? "loop" : "single";
+
+    const issuerId = interaction.user.id;
+
+    // カテゴリID取得（仕様書準拠）
+    const categoryId = getCategoryId(interaction.channel);
+    if (!categoryId) {
+      return interaction.reply({
+        content: "このコマンドは文明カテゴリ内で実行してください。",
+        ephemeral: true,
+      });
+    }
+
+    // settings 取得（クエスト掲示板 + ログチャンネル）
     const settingsRes = await db.query(
-      "SELECT quest_board_channel_id FROM settings WHERE category_id = $1",
+      "SELECT quest_board_channel_id, log_channel_id FROM settings WHERE category_id = $1",
       [categoryId]
     );
 
@@ -47,8 +63,9 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
       });
     }
 
-    const { quest_board_channel_id } = settingsRes.rows[0];
+    const { quest_board_channel_id, log_channel_id } = settingsRes.rows[0];
 
+    // クエスト掲示板フォーラム取得
     const forum = await interaction.guild?.channels.fetch(quest_board_channel_id);
 
     if (!forum || forum.type !== ChannelType.GuildForum) {
@@ -58,33 +75,42 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
       });
     }
 
+    // スレッド作成（仕様書準拠）
     const thread = await forum.threads.create({
       name: title,
-      message: { content: "クエストを作成しました！" },
+      message: { content: "📝 クエストが作成されました！" },
     });
 
-    // DB にクエスト保存（ID 取得用）
+    // DB にクエスト保存
     const questRes = await db.query(
       `INSERT INTO quests (
         category_id, title, description, points, type, status, forum_thread_id, issuer_id
       ) VALUES ($1,$2,$3,$4,$5,'active',$6,$7)
-      RETURNING id`,  // ← ID を取得
+      RETURNING id`,
       [categoryId, title, description, points, type, thread.id, issuerId]
     );
 
     const questId = questRes.rows[0].id;
 
-    // ✅ ボタン付き Embed を送信
-    const { embed, buttons } = createQuestEmbed({ 
-      title, 
-      description, 
-      points, 
+    // embed + ボタン（仕様書準拠）
+    const { embed, buttons } = createQuestEmbed({
+      title,
+      description,
+      points,
       type,
-      questId,        // ← 追加
-      threadId: thread.id  // ← 追加
+      questId,
+      threadId: thread.id,
     });
 
     await thread.send({ embeds: [embed], components: [buttons] });
+
+    // ログチャンネルに通知（仕様書準拠）
+    const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
+    if (logChannel?.isTextBased()) {
+      await logChannel.send(
+        `🆕 ${interaction.user.username} さんが新しいクエスト「${title}」を作成しました！`
+      );
+    }
 
     return interaction.reply({
       content: `クエスト **${title}** を作成しました！`,

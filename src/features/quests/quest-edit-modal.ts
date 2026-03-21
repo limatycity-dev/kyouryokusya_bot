@@ -6,25 +6,38 @@ import { getCategoryId } from "../../utils/getCategoryId";
 export async function handleQuestEditModal(interaction: ModalSubmitInteraction) {
   if (!interaction.customId.startsWith("quest_edit_modal_")) return;
 
-  const threadId = interaction.customId.replace("quest_edit_modal_", "");
+  // customId は questId
+  const questId = interaction.customId.replace("quest_edit_modal_", "");
 
   const newTitle = interaction.fields.getTextInputValue("title") || null;
   const newDesc = interaction.fields.getTextInputValue("description") || null;
-  const newPoints = interaction.fields.getTextInputValue("points") || null;
+  const newPointsRaw = interaction.fields.getTextInputValue("points") || null;
 
-  // util でカテゴリID取得（スレッド → フォーラム → カテゴリ）
-  const categoryId = await getCategoryId(interaction.channel);
+  // ポイントバリデーション
+  let newPoints: number | null = null;
+  if (newPointsRaw) {
+    const num = Number(newPointsRaw);
+    if (isNaN(num) || num <= 0 || num > 9999) {
+      return interaction.reply({
+        content: "ポイントは 1〜9999 の数値で入力してください。",
+        ephemeral: true,
+      });
+    }
+    newPoints = num;
+  }
 
+  // カテゴリID取得（仕様書準拠）
+  const categoryId = getCategoryId(interaction.channel);
   if (!categoryId) {
     return interaction.reply({
-      content: "カテゴリ内で実行してください。",
+      content: "このコマンドは文明カテゴリ内で実行してください。",
       ephemeral: true,
     });
   }
 
-  // settings をカテゴリIDで取得
+  // settings 取得（log_channel_id 必須）
   const settingsRes = await db.query(
-    "SELECT * FROM settings WHERE category_id = $1",
+    "SELECT log_channel_id FROM settings WHERE category_id = $1",
     [categoryId]
   );
 
@@ -35,7 +48,9 @@ export async function handleQuestEditModal(interaction: ModalSubmitInteraction) 
     });
   }
 
-  // 管理者判定
+  const { log_channel_id } = settingsRes.rows[0];
+
+  // 管理者チェック
   const adminRes = await db.query(
     "SELECT 1 FROM admins WHERE category_id = $1 AND user_id = $2",
     [categoryId, interaction.user.id]
@@ -43,15 +58,15 @@ export async function handleQuestEditModal(interaction: ModalSubmitInteraction) 
 
   if (adminRes.rowCount === 0) {
     return interaction.reply({
-      content: "あなたにはこのクエストを編集する権限がありません。",
+      content: "あなたはこの文明の管理者ではありません。",
       ephemeral: true,
     });
   }
 
-  // クエスト取得
+  // クエスト取得（questId ベース）
   const questRes = await db.query(
-    "SELECT id FROM quests WHERE forum_thread_id = $1",
-    [threadId]
+    "SELECT id, title, description, points, type, status, forum_thread_id FROM quests WHERE id = $1",
+    [questId]
   );
 
   if (questRes.rowCount === 0) {
@@ -61,7 +76,7 @@ export async function handleQuestEditModal(interaction: ModalSubmitInteraction) 
     });
   }
 
-  const questId = questRes.rows[0].id;
+  const quest = questRes.rows[0];
 
   // DB 更新
   await db.query(
@@ -70,12 +85,22 @@ export async function handleQuestEditModal(interaction: ModalSubmitInteraction) 
          description = COALESCE($2, description),
          points = COALESCE($3, points)
      WHERE id = $4`,
-    [newTitle, newDesc, newPoints ? Number(newPoints) : null, questId]
+    [newTitle, newDesc, newPoints, questId]
   );
 
-  // スレッドの Embed を更新
-  const thread = await interaction.guild?.channels.fetch(threadId);
+  // スレッド取得
+  const thread = await interaction.guild?.channels.fetch(quest.forum_thread_id);
   if (thread && thread.isThread()) {
+    // スレッド名更新（仕様書準拠）
+    const updatedTitle = newTitle ?? quest.title;
+    const newThreadName =
+      quest.status === "closed"
+        ? `✅ ${updatedTitle}`
+        : updatedTitle;
+
+    await thread.setName(newThreadName);
+
+    // 最初のメッセージ（embed）を更新
     const messages = await thread.messages.fetch({ limit: 1 });
     const msg = messages.first();
 
@@ -87,7 +112,6 @@ export async function handleQuestEditModal(interaction: ModalSubmitInteraction) 
 
       const updatedQuest = updatedQuestRes.rows[0];
 
-      // ✅ 修正: { embed, buttons } を分割代入
       const { embed, buttons } = createQuestEmbed({
         title: updatedQuest.title,
         description: updatedQuest.description,
@@ -97,9 +121,16 @@ export async function handleQuestEditModal(interaction: ModalSubmitInteraction) 
         threadId: updatedQuest.forum_thread_id,
       });
 
-      // ✅ 修正: embed と buttons を使用
       await msg.edit({ embeds: [embed], components: [buttons] });
     }
+  }
+
+  // ログ送信（仕様書準拠）
+  const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
+  if (logChannel?.isTextBased()) {
+    await logChannel.send(
+      `✏️ 管理者 ${interaction.user.username} さんがクエスト「${newTitle ?? quest.title}」を編集しました。`
+    );
   }
 
   return interaction.reply({

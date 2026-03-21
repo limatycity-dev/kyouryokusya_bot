@@ -6,26 +6,24 @@ import { updateRealtimeRanking } from "../ranking/update/updateRealtimeRanking";
 export async function handleQuestCompleteButton(interaction: ButtonInteraction) {
   try {
     const customId = interaction.customId;
-
     if (!customId.startsWith("quest_complete_")) return;
 
     const threadId = customId.replace("quest_complete_", "");
     const userId = interaction.user.id;
-    const username = interaction.user.username;  // ✅ 追加: username を取得
+    const username = interaction.user.username;
 
-    // util でカテゴリID取得（スレッド → フォーラム → カテゴリ）
-    const categoryId = await getCategoryId(interaction.channel);
-
+    // カテゴリID取得（仕様書準拠）
+    const categoryId = getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
-        content: "カテゴリ内で実行してください。",
+        content: "このコマンドは文明カテゴリ内で実行してください。",
         ephemeral: true,
       });
     }
 
-    // settings をカテゴリIDで取得（info_channel_id と ranking_channel_id 両方取得）
+    // settings 取得（log_channel_id / ranking_channel_id）
     const settingsRes = await db.query(
-      "SELECT info_channel_id, ranking_channel_id FROM settings WHERE category_id = $1",
+      "SELECT log_channel_id, ranking_channel_id FROM settings WHERE category_id = $1",
       [categoryId]
     );
 
@@ -36,23 +34,30 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       });
     }
 
-    const infoChannelId = settingsRes.rows[0].info_channel_id;
-    const rankingChannelId = settingsRes.rows[0].ranking_channel_id;
+    const { log_channel_id, ranking_channel_id } = settingsRes.rows[0];
 
-    // クエスト取得
+    // クエスト取得（status も取得）
     const questRes = await db.query(
-      "SELECT id, type, points, title FROM quests WHERE forum_thread_id = $1",
+      "SELECT id, type, points, title, status FROM quests WHERE forum_thread_id = $1",
       [threadId]
     );
 
     if (questRes.rowCount === 0) {
       return interaction.reply({
-        content: "このクエスト情報が見つかりません。",
+        content: "クエスト情報が見つかりません。",
         ephemeral: true,
       });
     }
 
     const quest = questRes.rows[0];
+
+    // 終了済みクエストは達成不可
+    if (quest.status === "closed") {
+      return interaction.reply({
+        content: "このクエストはすでに終了しています。",
+        ephemeral: true,
+      });
+    }
 
     // 単発クエストは1回だけ
     const logCheck = await db.query(
@@ -73,23 +78,23 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       [userId, quest.id, quest.points]
     );
 
-    // ✅ 修正: name と weekly_points も保存、username を使用
+    // users テーブル更新（category_id 必須）
     await db.query(
-      `INSERT INTO users (user_id, name, total_points, weekly_points, weekly_tasks_completed)
-       VALUES ($1, $2, $3, $4, 1)
-       ON CONFLICT (user_id)
+      `INSERT INTO users (category_id, user_id, name, total_points, weekly_points, weekly_tasks_completed)
+       VALUES ($1, $2, $3, $4, $5, 1)
+       ON CONFLICT (category_id, user_id)
        DO UPDATE SET
-         name = COALESCE(NULLIF($2, ''), users.name),
+         name = COALESCE(NULLIF($3, ''), users.name),
          total_points = users.total_points + EXCLUDED.total_points,
          weekly_points = users.weekly_points + EXCLUDED.weekly_points,
          weekly_tasks_completed = users.weekly_tasks_completed + 1`,
-      [userId, username, quest.points, quest.points]
+      [categoryId, userId, username, quest.points, quest.points]
     );
 
     // 累計ポイント取得
     const userPointRes = await db.query(
-      "SELECT total_points FROM users WHERE user_id = $1",
-      [userId]
+      "SELECT total_points FROM users WHERE category_id = $1 AND user_id = $2",
+      [categoryId, userId]
     );
     const totalPoints = userPointRes.rows[0].total_points;
 
@@ -100,22 +105,21 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
     );
     const loopCount = Number(loopCountRes.rows[0].count);
 
-    // ✅ info_channel_id を使用してログチャンネルに送信
-    const infoChannel = await interaction.guild?.channels.fetch(infoChannelId);
-
-    if (infoChannel?.isTextBased()) {
+    // ログチャンネルに送信（仕様書準拠）
+    const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
+    if (logChannel?.isTextBased()) {
       if (quest.type === "single") {
-        await infoChannel.send(
-          `${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n累計ポイント: ${totalPoints} pt`
+        await logChannel.send(
+          `🎉 ${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n累計ポイント: ${totalPoints} pt`
         );
       } else {
-        await infoChannel.send(
-          `${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n累計 ${loopCount} 回目 / 累計ポイント: ${totalPoints} pt`
+        await logChannel.send(
+          `🎉 ${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n${loopCount} 回目の達成 / 累計ポイント: ${totalPoints} pt`
         );
       }
     }
 
-    // 単発クエストならクローズ
+    // 単発クエストは達成後に終了（仕様書準拠）
     if (quest.type === "single") {
       await db.query(
         "UPDATE quests SET status = 'closed' WHERE id = $1",
@@ -124,20 +128,24 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
 
       const thread = await interaction.guild?.channels.fetch(threadId);
       if (thread && thread.isThread()) {
-        await thread.setName(`✅ ${thread.name}`);
+        // スレッド名を仕様書準拠に変更
+        await thread.setName(`✅ ${quest.title}`);
+
+        // 終了メッセージ
+        await thread.send(`🛑 このクエストは終了しました。`);
+
+        // ロック＋アーカイブ
         await thread.setLocked(true);
+        await thread.setArchived(true);
       }
     }
 
-    // ✅ ランキングチャンネルを更新
-    if (rankingChannelId) {
-      const rankingChannel = await interaction.guild?.channels.fetch(rankingChannelId);
-
+    // ランキング更新
+    if (ranking_channel_id) {
+      const rankingChannel = await interaction.guild?.channels.fetch(ranking_channel_id);
       if (rankingChannel instanceof TextChannel) {
         const success = await updateRealtimeRanking(rankingChannel);
-        if (!success) {
-          console.warn("⚠️ ランキング更新に失敗しました");
-        }
+        if (!success) console.warn("⚠️ ランキング更新に失敗しました");
       }
     }
 
