@@ -23,7 +23,8 @@ export const registerCommand = {
         [userId]
       );
 
-      if (existing.rowCount > 0) {
+      if (existing.rowCount! > 0) {
+
         return interaction.reply({
           content: "すでに登録されています。",
           ephemeral: true,

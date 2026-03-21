@@ -22,7 +22,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     `SELECT value FROM system WHERE key = 'ranking_message_id'`
   );
 
-  if (result.rowCount > 0) {
+  if (result.rowCount! > 0) {
     return interaction.reply("ランキングメッセージはすでに作成されています。");
   }
 
