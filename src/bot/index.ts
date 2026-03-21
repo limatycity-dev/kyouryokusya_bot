@@ -15,7 +15,6 @@ import { handleQuestCompleteButton } from "../features/quests/quest-complete-but
 import { handleQuestCloseButton } from "../features/quests/quest-close-button";
 import { handleQuestEditButton } from "../features/quests/quest-edit-button";
 
-// ✅ 追加: ランキングボタンハンドラーをインポート
 import { handleRankingButton } from "../features/ranking/buttons/ranking-button";
 
 import { handleQuestCreateModal } from "../features/quests/quest-create-modal";
@@ -32,50 +31,62 @@ client.once("ready", () => {
 });
 
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.isChatInputCommand()) {
+  try {
+    // Slash Commands
+    if (interaction.isChatInputCommand()) {
+      switch (interaction.commandName) {
+        case "register":
+          await registerCommand.execute(interaction);
+          return;
 
-    if (interaction.commandName === "register") {
-      await registerCommand.execute(interaction);
+        case "setup":
+          await setupCommand.execute(interaction);
+          return;
+
+        case "quest-create":
+          await questCreateCommand.execute(interaction);
+          return;
+
+        case "admin":
+          await adminCommand.execute(interaction);
+          return;
+
+        case "ranking":
+          await ranking.execute(interaction);
+          return;
+
+        case "ranking-init":
+          await rankingInit.execute(interaction);
+          return;
+
+        case "ranking-weekly":
+          await rankingWeekly.execute(interaction);
+          return;
+
+        default:
+          return;
+      }
     }
 
-    if (interaction.commandName === "setup") {
-      await setupCommand.execute(interaction);
+    // Buttons
+    if (interaction.isButton()) {
+      await handleQuestCompleteButton(interaction);
+      await handleQuestCloseButton(interaction);
+      await handleQuestEditButton(interaction);
+      await handleRankingButton(interaction);
+      return;
     }
 
-    if (interaction.commandName === "quest-create") {
-      await questCreateCommand.execute(interaction);
+    // Modals
+    if (interaction.isModalSubmit()) {
+      await handleQuestCreateModal(interaction);
+      await handleQuestEditModal(interaction);
+      return;
     }
-
-    if (interaction.commandName === "admin") {
-      await adminCommand.execute(interaction);
-    }
-
-    // ★ ランキングコマンド（data / execute 形式）
-    if (interaction.commandName === "ranking") {
-      await ranking.execute(interaction);
-    }
-
-    if (interaction.commandName === "ranking-init") {
-      await rankingInit.execute(interaction);
-    }
-
-    if (interaction.commandName === "ranking-weekly") {
-      await rankingWeekly.execute(interaction);
-    }
-  }
-
-  if (interaction.isButton()) {
-    await handleQuestCompleteButton(interaction);
-    await handleQuestCloseButton(interaction);
-    await handleQuestEditButton(interaction);
-    
-    // ✅ 追加: ランキングボタンハンドラーを登録
-    await handleRankingButton(interaction);
-  }
-
-  if (interaction.isModalSubmit()) {
-    await handleQuestCreateModal(interaction);
-    await handleQuestEditModal(interaction);
+  } catch (error) {
+    console.error("INTERACTION ERROR:", error);
+    // ここは仕様書の「エラー処理」章に合わせて、
+    // 各ハンドラー側でユーザー向けメッセージを返す前提の最低限ログに留めている
   }
 });
 
