@@ -140,15 +140,14 @@ BOT の起動処理を担当するレイヤー。
   ├── 04_commands.md
   ├── 05_ui_spec.md
   ├── 06_operation_flow.md
-  ├── 07_error_handling.md
-  └── 08_code_behavior/
+  └──  07_error_handling.md
 ```
 
 ---
 
 ## /@docs/spec
 - 統合仕様書（spec_full.md）の出力先  
-- Git 管理しない（生成物のため）
+- Githubにて管理し、毎回copilotにはRAWURLにて共有する
 
 ---
 
