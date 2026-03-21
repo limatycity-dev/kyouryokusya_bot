@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction,
 } from "discord.js";
 import { db } from "../../db/client";
+import { getCategoryId } from "../../utils/getCategoryId";
 
 export const adminCommand = {
   data: new SlashCommandBuilder()
@@ -29,8 +30,8 @@ export const adminCommand = {
     const sub = interaction.options.getSubcommand();
     const targetUser = interaction.options.getUser("user", true);
 
-    // 現在のチャンネルのカテゴリを取得
-    const categoryId = interaction.channel?.parentId;
+    // 共通関数でカテゴリID取得（仕様書準拠）
+    const categoryId = getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
         content: "このコマンドは文明カテゴリ内で実行してください。",
