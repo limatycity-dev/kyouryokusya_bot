@@ -28,7 +28,9 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
     const issuerId = interaction.user.id;
 
     // カテゴリID取得
-    const categoryId = getCategoryId(interaction.channel);
+    const categoryId = await getCategoryId(interaction.channel);
+
+
     if (!categoryId) {
       return interaction.reply({
         content: "このコマンドは文明カテゴリ内で実行してください。",

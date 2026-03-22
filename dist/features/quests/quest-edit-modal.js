@@ -32,7 +32,7 @@ async function handleQuestEditModal(interaction) {
         });
     }
     // カテゴリID取得
-    const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
+    const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
     if (!categoryId) {
         return interaction.reply({
             content: "この操作は文明カテゴリ内でのみ実行できます。",

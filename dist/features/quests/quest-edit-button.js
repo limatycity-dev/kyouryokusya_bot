@@ -10,7 +10,7 @@ async function handleQuestEditButton(interaction) {
     // customId = quest_edit_<questId>
     const questId = interaction.customId.replace("quest_edit_", "");
     // カテゴリID取得（仕様書準拠）
-    const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
+    const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
     if (!categoryId) {
         return interaction.reply({
             content: "この操作は文明カテゴリ内でのみ実行できます。",

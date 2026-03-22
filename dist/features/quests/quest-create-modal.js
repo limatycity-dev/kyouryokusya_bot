@@ -25,7 +25,7 @@ async function handleQuestCreateModal(interaction) {
         const type = rawType === "loop" ? "loop" : "single";
         const issuerId = interaction.user.id;
         // カテゴリID取得
-        const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
+        const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
         if (!categoryId) {
             return interaction.reply({
                 content: "このコマンドは文明カテゴリ内で実行してください。",

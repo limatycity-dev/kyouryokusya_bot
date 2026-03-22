@@ -35,7 +35,7 @@ export async function handleQuestEditModal(interaction: ModalSubmitInteraction) 
   }
 
   // カテゴリID取得
-  const categoryId = getCategoryId(interaction.channel);
+  const categoryId = await getCategoryId(interaction.channel);
   if (!categoryId) {
     return interaction.reply({
       content: "この操作は文明カテゴリ内でのみ実行できます。",
