@@ -4,15 +4,10 @@ import {
   GuildBasedChannel,
 } from "discord.js";
 
-/**
- * 文明カテゴリIDを取得する（完全安定版）
- */
 export async function getCategoryId(
   channel: Channel | GuildBasedChannel | null
 ): Promise<string | null> {
   if (!channel) return null;
-
-  // Guild 内でしか使わないので GuildBasedChannel に絞る
   if (!("guild" in channel)) return null;
 
   const guild = channel.guild;
@@ -21,8 +16,9 @@ export async function getCategoryId(
     // ============================
     // 🧵 Thread → Forum → Category
     // ============================
-    case ChannelType.PublicThread:
-    case ChannelType.PrivateThread: {
+    case ChannelType.GuildPublicThread:
+    case ChannelType.GuildPrivateThread:
+    case ChannelType.GuildNewsThread: {
       const forumId = channel.parentId;
       if (!forumId) return null;
 
@@ -48,9 +44,6 @@ export async function getCategoryId(
     case ChannelType.GuildMedia:
       return channel.parentId ?? null;
 
-    // ============================
-    // ❌ DM / CategoryChannel / その他
-    // ============================
     default:
       return null;
   }

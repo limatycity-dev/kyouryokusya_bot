@@ -2,13 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCategoryId = getCategoryId;
 const discord_js_1 = require("discord.js");
-/**
- * 文明カテゴリIDを取得する（完全安定版）
- */
 async function getCategoryId(channel) {
     if (!channel)
         return null;
-    // Guild 内でしか使わないので GuildBasedChannel に絞る
     if (!("guild" in channel))
         return null;
     const guild = channel.guild;
@@ -16,8 +12,9 @@ async function getCategoryId(channel) {
         // ============================
         // 🧵 Thread → Forum → Category
         // ============================
-        case discord_js_1.ChannelType.PublicThread:
-        case discord_js_1.ChannelType.PrivateThread: {
+        case discord_js_1.ChannelType.GuildPublicThread:
+        case discord_js_1.ChannelType.GuildPrivateThread:
+        case discord_js_1.ChannelType.GuildNewsThread: {
             const forumId = channel.parentId;
             if (!forumId)
                 return null;
@@ -40,9 +37,6 @@ async function getCategoryId(channel) {
         case discord_js_1.ChannelType.GuildAnnouncement:
         case discord_js_1.ChannelType.GuildMedia:
             return channel.parentId ?? null;
-        // ============================
-        // ❌ DM / CategoryChannel / その他
-        // ============================
         default:
             return null;
     }
