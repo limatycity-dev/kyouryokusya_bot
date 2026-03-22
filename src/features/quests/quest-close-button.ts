@@ -7,19 +7,28 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
     const customId = interaction.customId;
     if (!customId.startsWith("quest_close_")) return;
 
-    const threadId = customId.replace("quest_close_", "");
+    // customId = quest_close_<questId>
+    const questId = customId.replace("quest_close_", "");
     const userId = interaction.user.id;
 
-    // カテゴリID取得（仕様書準拠）
-    const categoryId = getCategoryId(interaction.channel);
-    if (!categoryId) {
+    // スレッド内で押されているかチェック（文明仕様）
+    if (!interaction.channel?.isThread()) {
       return interaction.reply({
-        content: "このコマンドは文明カテゴリ内で実行してください。",
+        content: "終了操作はクエストスレッド内のボタンから実行してください。",
         ephemeral: true,
       });
     }
 
-    // settings 取得（log_channel_id を使用）
+    // カテゴリID取得
+    const categoryId = getCategoryId(interaction.channel);
+    if (!categoryId) {
+      return interaction.reply({
+        content: "この操作は文明カテゴリ内でのみ実行できます。",
+        ephemeral: true,
+      });
+    }
+
+    // settings 取得
     const settingsRes = await db.query(
       "SELECT log_channel_id FROM settings WHERE category_id = $1",
       [categoryId]
@@ -47,10 +56,10 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
       });
     }
 
-    // クエスト取得（status も確認）
+    // クエスト取得（questId ベース）
     const questRes = await db.query(
-      "SELECT id, title, status FROM quests WHERE forum_thread_id = $1",
-      [threadId]
+      "SELECT id, title, status, forum_thread_id FROM quests WHERE id = $1",
+      [questId]
     );
 
     if (questRes.rowCount === 0) {
@@ -61,6 +70,7 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
     }
 
     const quest = questRes.rows[0];
+    const threadId = quest.forum_thread_id;
 
     // すでに終了済み
     if (quest.status === "closed") {

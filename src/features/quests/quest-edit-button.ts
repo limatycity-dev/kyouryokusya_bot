@@ -11,13 +11,14 @@ import { getCategoryId } from "../../utils/getCategoryId";
 export async function handleQuestEditButton(interaction: ButtonInteraction) {
   if (!interaction.customId.startsWith("quest_edit_")) return;
 
-  const threadId = interaction.customId.replace("quest_edit_", "");
+  // customId = quest_edit_<questId>
+  const questId = interaction.customId.replace("quest_edit_", "");
 
   // カテゴリID取得（仕様書準拠）
   const categoryId = getCategoryId(interaction.channel);
   if (!categoryId) {
     return interaction.reply({
-      content: "このコマンドは文明カテゴリ内で実行してください。",
+      content: "この操作は文明カテゴリ内でのみ実行できます。",
       ephemeral: true,
     });
   }
@@ -35,10 +36,10 @@ export async function handleQuestEditButton(interaction: ButtonInteraction) {
     });
   }
 
-  // クエスト取得（threadId → questId）
+  // クエスト取得（questId で検索）
   const questRes = await db.query(
-    "SELECT id, title, description, points FROM quests WHERE forum_thread_id = $1",
-    [threadId]
+    "SELECT id, title, description, points FROM quests WHERE id = $1",
+    [questId]
   );
 
   if (questRes.rowCount === 0) {
@@ -52,14 +53,14 @@ export async function handleQuestEditButton(interaction: ButtonInteraction) {
 
   // モーダル作成（仕様書準拠）
   const modal = new ModalBuilder()
-    .setCustomId(`quest_edit_modal_${quest.id}`) // ← questId を使用
+    .setCustomId(`quest_edit_modal_${quest.id}`) // questId を使用
     .setTitle("クエストを編集");
 
   const titleInput = new TextInputBuilder()
     .setCustomId("title")
     .setLabel("タイトル")
     .setStyle(TextInputStyle.Short)
-    .setValue(quest.title) // ← 現在値をプリセット
+    .setValue(quest.title)
     .setRequired(false);
 
   const descInput = new TextInputBuilder()
