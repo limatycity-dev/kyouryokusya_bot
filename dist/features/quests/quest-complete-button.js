@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleQuestCompleteButton = handleQuestCompleteButton;
 const client_1 = require("../../db/client");
 const getCategoryId_1 = require("../../utils/getCategoryId");
-const rankingService_1 = require("../ranking/services/rankingService");
+const updateRankingCombined_1 = require("../ranking/services/updateRankingCombined ");
 const settingRepository_1 = require("../ranking/repository/settingRepository");
 const quest_embed_1 = require("./quest-embed");
 async function handleQuestCompleteButton(interaction) {
@@ -130,8 +130,8 @@ async function handleQuestCompleteButton(interaction) {
                 await thread3.setArchived(true);
             }
         }
-        // 11. ランキング更新
-        await rankingService_1.rankingService.updateRealtimeRanking(interaction.client, categoryId, ranking_channel_id);
+        // 11. ランキング更新（複合ランキング）
+        await updateRankingCombined_1.rankingService.updateRankingCombined(interaction.client, categoryId, ranking_channel_id);
     }
     catch (err) {
         console.error("QUEST COMPLETE ERROR:", err);

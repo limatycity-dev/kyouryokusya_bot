@@ -1,7 +1,7 @@
 import { ButtonInteraction } from "discord.js";
 import { db } from "../../db/client";
 import { getCategoryId } from "../../utils/getCategoryId";
-import { rankingService } from "../ranking/services/rankingService";
+import { rankingService } from "../ranking/services/updateRankingCombined ";
 import { getRankingChannelIdByCategoryId } from "../ranking/repository/settingRepository";
 import { createQuestEmbed } from "./quest-embed";
 
@@ -181,8 +181,8 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       }
     }
 
-    // 11. ランキング更新
-    await rankingService.updateRealtimeRanking(
+    // 11. ランキング更新（複合ランキング）
+    await rankingService.updateRankingCombined(
       interaction.client,
       categoryId,
       ranking_channel_id
