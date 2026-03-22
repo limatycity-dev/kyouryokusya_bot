@@ -1,42 +1,56 @@
-import { Channel, ChannelType } from "discord.js";
+import {
+  Channel,
+  ChannelType,
+  GuildBasedChannel,
+} from "discord.js";
 
-export function getCategoryId(channel: Channel | null): string | null {
+/**
+ * 文明カテゴリIDを取得する（完全安定版）
+ */
+export async function getCategoryId(
+  channel: Channel | GuildBasedChannel | null
+): Promise<string | null> {
   if (!channel) return null;
 
+  // Guild 内でしか使わないので GuildBasedChannel に絞る
+  if (!("guild" in channel)) return null;
+
+  const guild = channel.guild;
+
   switch (channel.type) {
-    // スレッド → 親フォーラム → カテゴリ
+    // ============================
+    // 🧵 Thread → Forum → Category
+    // ============================
     case ChannelType.PublicThread:
     case ChannelType.PrivateThread: {
-      const forum = channel.parent;
-      if (!forum) return null;
+      const forumId = channel.parentId;
+      if (!forumId) return null;
+
+      const forum = await guild.channels.fetch(forumId).catch(() => null);
+      if (!forum || forum.type !== ChannelType.GuildForum) return null;
+
       return forum.parentId ?? null;
     }
 
-    // フォーラム → カテゴリ
+    // ============================
+    // 🗂 Forum → Category
+    // ============================
     case ChannelType.GuildForum:
       return channel.parentId ?? null;
 
-    // テキストチャンネル → カテゴリ
+    // ============================
+    // 💬 Text / 🔊 Voice / 📣 Announcement → Category
+    // ============================
     case ChannelType.GuildText:
-      return channel.parentId ?? null;
-
-    // ボイスチャンネル → カテゴリ
     case ChannelType.GuildVoice:
-      return channel.parentId ?? null;
-
-    // ステージチャンネル → カテゴリ
     case ChannelType.GuildStageVoice:
-      return channel.parentId ?? null;
-
-    // アナウンスチャンネル → カテゴリ
     case ChannelType.GuildAnnouncement:
-      return channel.parentId ?? null;
-
-    // メディアチャンネル → カテゴリ
     case ChannelType.GuildMedia:
       return channel.parentId ?? null;
 
-    // DM / GroupDM / CategoryChannel など → 文明カテゴリ外
+    // ============================
+    // ❌ DM / CategoryChannel / その他
+    // ============================
     default:
       return null;
   }

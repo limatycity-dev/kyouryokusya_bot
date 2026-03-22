@@ -15,8 +15,8 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
     const userId = interaction.user.id;
     const username = interaction.user.username;
 
-    // 1. カテゴリ判定
-    const categoryId = getCategoryId(interaction.channel);
+    // 1. カテゴリ判定（async 対応）
+    const categoryId = await getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
         content: "この操作は文明カテゴリ内でのみ実行できます。",
@@ -151,7 +151,6 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
 
       // embed 更新（messageId で直接 fetch）
       if (quest.message_id) {
-
         const thread = await interaction.guild?.channels.fetch(threadId);
 
         if (!thread || !thread.isThread()) {
@@ -161,13 +160,11 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
           });
         }
 
-
-
         const botMessage = await thread?.messages.fetch(quest.message_id);
 
         const { embed, buttons } = createQuestEmbed({
           title: quest.title,
-          description: "", // description は変わらないので再取得不要
+          description: "",
           points: quest.points,
           type: quest.type,
           questId: quest.id,
