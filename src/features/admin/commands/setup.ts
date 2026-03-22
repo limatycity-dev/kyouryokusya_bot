@@ -101,20 +101,49 @@ export const setupCommand = {
       // -----------------------------
       // チャンネル作成
       // -----------------------------
+
+      // 🔔｜アナウンス（Text）
+      const announceChannel = await guild.channels.create({
+        name: "🔔｜アナウンス",
+        type: ChannelType.GuildText,
+        parent: category.id,
+      });
+
       const questBoard = await guild.channels.create({
-        name: "クエスト掲示板",
+        name: "📝｜クエスト掲示板",
         type: ChannelType.GuildForum,
         parent: category.id,
       });
 
       const logChannel = await guild.channels.create({
-        name: "ログ",
+        name: "📜｜ログ",
         type: ChannelType.GuildText,
         parent: category.id,
       });
 
       const rankingChannel = await guild.channels.create({
-        name: "ランキング",
+        name: "📊｜ランキング",
+        type: ChannelType.GuildText,
+        parent: category.id,
+      });
+
+      // 📕｜攻略本（Forum）
+      const guideForum = await guild.channels.create({
+        name: "📕｜攻略本",
+        type: ChannelType.GuildForum,
+        parent: category.id,
+      });
+
+      // 📗｜フリーフォーラム（Forum）
+      const freeForum = await guild.channels.create({
+        name: "📗｜フリーフォーラム",
+        type: ChannelType.GuildForum,
+        parent: category.id,
+      });
+
+      // 💬｜雑談（Text）
+      const chatChannel = await guild.channels.create({
+        name: "💬｜雑談",
         type: ChannelType.GuildText,
         parent: category.id,
       });
@@ -151,14 +180,6 @@ export const setupCommand = {
             .setColor("#ffd700")
         ]
       });
-
-      // DB に ranking_message_id を保存するならここで保存
-      await db.query(
-        "UPDATE settings SET ranking_message_id = $1 WHERE category_id = $2",
-        [rankingMessage.id, category.id]
-      );
-
-
 
       // -----------------------------
       // 成功メッセージ
