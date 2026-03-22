@@ -7,12 +7,13 @@ const getCategoryId_1 = require("../../utils/getCategoryId");
 async function handleQuestEditButton(interaction) {
     if (!interaction.customId.startsWith("quest_edit_"))
         return;
-    const threadId = interaction.customId.replace("quest_edit_", "");
+    // customId = quest_edit_<questId>
+    const questId = interaction.customId.replace("quest_edit_", "");
     // カテゴリID取得（仕様書準拠）
     const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
     if (!categoryId) {
         return interaction.reply({
-            content: "このコマンドは文明カテゴリ内で実行してください。",
+            content: "この操作は文明カテゴリ内でのみ実行できます。",
             ephemeral: true,
         });
     }
@@ -24,8 +25,8 @@ async function handleQuestEditButton(interaction) {
             ephemeral: true,
         });
     }
-    // クエスト取得（threadId → questId）
-    const questRes = await client_1.db.query("SELECT id, title, description, points FROM quests WHERE forum_thread_id = $1", [threadId]);
+    // クエスト取得（questId で検索）
+    const questRes = await client_1.db.query("SELECT id, title, description, points FROM quests WHERE id = $1", [questId]);
     if (questRes.rowCount === 0) {
         return interaction.reply({
             content: "クエスト情報が見つかりません。",
@@ -35,13 +36,13 @@ async function handleQuestEditButton(interaction) {
     const quest = questRes.rows[0];
     // モーダル作成（仕様書準拠）
     const modal = new discord_js_1.ModalBuilder()
-        .setCustomId(`quest_edit_modal_${quest.id}`) // ← questId を使用
+        .setCustomId(`quest_edit_modal_${quest.id}`) // questId を使用
         .setTitle("クエストを編集");
     const titleInput = new discord_js_1.TextInputBuilder()
         .setCustomId("title")
         .setLabel("タイトル")
         .setStyle(discord_js_1.TextInputStyle.Short)
-        .setValue(quest.title) // ← 現在値をプリセット
+        .setValue(quest.title)
         .setRequired(false);
     const descInput = new discord_js_1.TextInputBuilder()
         .setCustomId("description")
