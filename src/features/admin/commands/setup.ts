@@ -86,7 +86,7 @@ export const setupCommand = {
         [category.id]
       );
 
-     if ((exists?.rowCount ?? 0) > 0) {
+      if ((exists?.rowCount ?? 0) > 0) {
         return interaction.reply({
           embeds: [
             new EmbedBuilder()
@@ -139,6 +139,26 @@ export const setupCommand = {
         "INSERT INTO admins (category_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
         [category.id, interaction.user.id]
       );
+
+      // -----------------------------
+      // ランキング初期メッセージ作成
+      // -----------------------------
+      const rankingMessage = await rankingChannel.send({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("🏆 ランキング（初期化）")
+            .setDescription("まだポイントがありません。クエストを進めてランキングを上げましょう！")
+            .setColor("#ffd700")
+        ]
+      });
+
+      // DB に ranking_message_id を保存するならここで保存
+      await db.query(
+        "UPDATE settings SET ranking_message_id = $1 WHERE category_id = $2",
+        [rankingMessage.id, category.id]
+      );
+
+
 
       // -----------------------------
       // 成功メッセージ
