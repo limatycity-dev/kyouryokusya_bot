@@ -10,7 +10,7 @@ exports.questCreateCommand = {
         .setDescription("新しいクエストを作成します"),
     async execute(interaction) {
         // カテゴリID取得（仕様書準拠）
-        const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
+        const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
         if (!categoryId) {
             return interaction.reply({
                 content: "このコマンドは文明カテゴリ内で実行してください。",

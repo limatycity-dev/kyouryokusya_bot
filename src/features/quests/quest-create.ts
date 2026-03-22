@@ -16,7 +16,7 @@ export const questCreateCommand = {
 
   async execute(interaction: ChatInputCommandInteraction) {
     // カテゴリID取得（仕様書準拠）
-    const categoryId = getCategoryId(interaction.channel);
+    const categoryId = await getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
         content: "このコマンドは文明カテゴリ内で実行してください。",
