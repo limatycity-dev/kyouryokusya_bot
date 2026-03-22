@@ -65,11 +65,7 @@ async function handleQuestCompleteButton(interaction) {
             });
         }
         // ================================
-        // 5. quest_logs 追加
-        // ================================
-        await client_1.db.query("INSERT INTO quest_logs (user_id, quest_id, points) VALUES ($1,$2,$3)", [userId, quest.id, quest.points]);
-        // ================================
-        // 6. users 更新
+        // 5. users（先に作る → 外部キー違反防止）
         // ================================
         await client_1.db.query(`
       INSERT INTO users (user_id, name, weekly_tasks_completed)
@@ -79,6 +75,10 @@ async function handleQuestCompleteButton(interaction) {
         name = COALESCE(NULLIF($2, ''), users.name),
         weekly_tasks_completed = users.weekly_tasks_completed + 1
       `, [userId, username]);
+        // ================================
+        // 6. quest_logs（後で追加）
+        // ================================
+        await client_1.db.query("INSERT INTO quest_logs (user_id, quest_id, points) VALUES ($1,$2,$3)", [userId, quest.id, quest.points]);
         // ================================
         // 7. user_stats 更新
         // ================================
