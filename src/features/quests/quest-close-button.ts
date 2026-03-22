@@ -84,13 +84,19 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
       quest.id,
     ]);
 
+    // ================================
+    // ★ 1. まず interaction.reply()（アーカイブ前に必ずやる）
+    // ================================
+    await interaction.reply({
+      content: `クエスト「${quest.title}」を終了しました。`,
+      ephemeral: true,
+    });
+
     // スレッド取得
     const thread = await interaction.guild?.channels.fetch(threadId);
 
     if (thread && thread.isThread()) {
-      // ================================
-      // 1. ★ embed 更新（アーカイブ前に必ずやる）
-      // ================================
+      // 2. embed 更新
       if (quest.message_id) {
         const botMessage = await thread.messages.fetch(quest.message_id);
 
@@ -107,16 +113,16 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
         await botMessage.edit({ embeds: [embed], components: [buttons] });
       }
 
-      // 2. 終了メッセージ
+      // 3. 終了メッセージ
       await thread.send(`🛑 このクエストは終了しました。`);
 
-      // 3. スレッド名変更
+      // 4. スレッド名変更
       await thread.setName(`✅ ${quest.title}`);
 
-      // 4. ロック
+      // 5. ロック
       await thread.setLocked(true);
 
-      // 5. アーカイブ（最後）
+      // 6. アーカイブ（最後）
       await thread.setArchived(true);
     }
 
@@ -128,10 +134,6 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
       );
     }
 
-    return interaction.reply({
-      content: `クエスト「${quest.title}」を終了しました。`,
-      ephemeral: true,
-    });
   } catch (err) {
     console.error("QUEST CLOSE ERROR:", err);
     return interaction.reply({

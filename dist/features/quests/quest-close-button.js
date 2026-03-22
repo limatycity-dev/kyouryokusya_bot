@@ -63,12 +63,17 @@ async function handleQuestCloseButton(interaction) {
         await client_1.db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [
             quest.id,
         ]);
+        // ================================
+        // ★ 1. まず interaction.reply()（アーカイブ前に必ずやる）
+        // ================================
+        await interaction.reply({
+            content: `クエスト「${quest.title}」を終了しました。`,
+            ephemeral: true,
+        });
         // スレッド取得
         const thread = await interaction.guild?.channels.fetch(threadId);
         if (thread && thread.isThread()) {
-            // ================================
-            // 1. ★ embed 更新（アーカイブ前に必ずやる）
-            // ================================
+            // 2. embed 更新
             if (quest.message_id) {
                 const botMessage = await thread.messages.fetch(quest.message_id);
                 const { embed, buttons } = (0, quest_embed_1.createQuestEmbed)({
@@ -82,13 +87,13 @@ async function handleQuestCloseButton(interaction) {
                 });
                 await botMessage.edit({ embeds: [embed], components: [buttons] });
             }
-            // 2. 終了メッセージ
+            // 3. 終了メッセージ
             await thread.send(`🛑 このクエストは終了しました。`);
-            // 3. スレッド名変更
+            // 4. スレッド名変更
             await thread.setName(`✅ ${quest.title}`);
-            // 4. ロック
+            // 5. ロック
             await thread.setLocked(true);
-            // 5. アーカイブ（最後）
+            // 6. アーカイブ（最後）
             await thread.setArchived(true);
         }
         // ログチャンネルに通知
@@ -96,10 +101,6 @@ async function handleQuestCloseButton(interaction) {
         if (logChannel?.isTextBased()) {
             await logChannel.send(`🛑 管理者 ${interaction.user.username} さんが「${quest.title}」を終了しました。`);
         }
-        return interaction.reply({
-            content: `クエスト「${quest.title}」を終了しました。`,
-            ephemeral: true,
-        });
     }
     catch (err) {
         console.error("QUEST CLOSE ERROR:", err);
