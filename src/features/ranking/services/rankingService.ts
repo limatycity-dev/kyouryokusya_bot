@@ -10,14 +10,21 @@ import { createCombinedRankingEmbed } from "../ui/createCombinedRankingEmbed";
 const SYSTEM_WEEKLY_KEY = "weekly_reset_key";
 
 export const rankingService = {
-  async ensureWeeklyResetIfNeeded(): Promise<void> {
+  async ensureWeeklyResetIfNeeded(): Promise<boolean> {
     const currentKey = getCurrentWeekKey();
     const stored = await rankingRepository.getSystemValue(SYSTEM_WEEKLY_KEY);
-    if (stored === currentKey) return;
 
+    // 同じ週 → 何もしない
+    if (stored === currentKey) {
+      return false;
+    }
+
+    // 週が変わった → リセット実行
     await rankingRepository.resetWeekly();
     await rankingRepository.setSystemValue(SYSTEM_WEEKLY_KEY, currentKey);
-  },
+
+    return true;
+  }, // ← ★ ここが重要（カンマ）
 
   // ============================================
   // 🆕 複合ランキング（リアルタイム＋週間）を描画

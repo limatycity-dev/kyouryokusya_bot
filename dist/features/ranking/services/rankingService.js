@@ -10,11 +10,15 @@ exports.rankingService = {
     async ensureWeeklyResetIfNeeded() {
         const currentKey = (0, dataUtils_1.getCurrentWeekKey)();
         const stored = await rankingRepository_1.rankingRepository.getSystemValue(SYSTEM_WEEKLY_KEY);
-        if (stored === currentKey)
-            return;
+        // 同じ週 → 何もしない
+        if (stored === currentKey) {
+            return false;
+        }
+        // 週が変わった → リセット実行
         await rankingRepository_1.rankingRepository.resetWeekly();
         await rankingRepository_1.rankingRepository.setSystemValue(SYSTEM_WEEKLY_KEY, currentKey);
-    },
+        return true;
+    }, // ← ★ ここが重要（カンマ）
     // ============================================
     // 🆕 複合ランキング（リアルタイム＋週間）を描画
     // ============================================
