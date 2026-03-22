@@ -25,7 +25,7 @@ exports.questCreateCommand = {
                 ephemeral: true,
             });
         }
-        // モーダル作成（仕様書準拠：type は入力させない）
+        // モーダル作成（仕様書準拠：type を入力させる）
         const modal = new discord_js_1.ModalBuilder()
             .setCustomId("quest_create_modal")
             .setTitle("クエストを作成");
@@ -44,7 +44,12 @@ exports.questCreateCommand = {
             .setLabel("ポイント")
             .setStyle(discord_js_1.TextInputStyle.Short)
             .setRequired(true);
-        modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(titleInput), new discord_js_1.ActionRowBuilder().addComponents(descInput), new discord_js_1.ActionRowBuilder().addComponents(pointsInput));
+        const typeInput = new discord_js_1.TextInputBuilder()
+            .setCustomId("type")
+            .setLabel("種類（空欄＝single / loop）")
+            .setStyle(discord_js_1.TextInputStyle.Short)
+            .setRequired(false); // 空欄OK
+        modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(titleInput), new discord_js_1.ActionRowBuilder().addComponents(descInput), new discord_js_1.ActionRowBuilder().addComponents(pointsInput), new discord_js_1.ActionRowBuilder().addComponents(typeInput));
         await interaction.showModal(modal);
     },
 };

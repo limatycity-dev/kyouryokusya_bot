@@ -37,7 +37,7 @@ export const questCreateCommand = {
       });
     }
 
-    // モーダル作成（仕様書準拠：type は入力させない）
+    // モーダル作成（仕様書準拠：type を入力させる）
     const modal = new ModalBuilder()
       .setCustomId("quest_create_modal")
       .setTitle("クエストを作成");
@@ -60,10 +60,17 @@ export const questCreateCommand = {
       .setStyle(TextInputStyle.Short)
       .setRequired(true);
 
+    const typeInput = new TextInputBuilder()
+      .setCustomId("type")
+      .setLabel("種類（空欄＝single / loop）")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false); // 空欄OK
+
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(titleInput),
       new ActionRowBuilder<TextInputBuilder>().addComponents(descInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(pointsInput)
+      new ActionRowBuilder<TextInputBuilder>().addComponents(pointsInput),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(typeInput)
     );
 
     await interaction.showModal(modal);
