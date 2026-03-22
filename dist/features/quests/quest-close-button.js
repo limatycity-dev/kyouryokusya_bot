@@ -9,7 +9,6 @@ async function handleQuestCloseButton(interaction) {
         const customId = interaction.customId;
         if (!customId.startsWith("quest_close_"))
             return;
-        // customId = quest_close_<questId>
         const questId = customId.replace("quest_close_", "");
         const userId = interaction.user.id;
         // スレッド内で押されているかチェック
@@ -29,11 +28,6 @@ async function handleQuestCloseButton(interaction) {
         }
         // settings 取得
         const settingsRes = await client_1.db.query("SELECT log_channel_id FROM settings WHERE category_id = $1", [categoryId]);
-        console.log("=== CLOSE BUTTON DEBUG ===");
-        console.log("interaction.channel.id:", interaction.channel?.id);
-        console.log("interaction.channel.type:", interaction.channel?.type);
-        console.log("interaction.channel.parentId:", interaction.channel?.parentId);
-        console.log("interaction.channel.constructor:", interaction.channel?.constructor?.name);
         if (settingsRes.rowCount === 0) {
             return interaction.reply({
                 content: "このカテゴリは /setup が実行されていません。",
@@ -49,7 +43,7 @@ async function handleQuestCloseButton(interaction) {
                 ephemeral: true,
             });
         }
-        // クエスト取得（message_id を含む）
+        // クエスト取得
         const questRes = await client_1.db.query("SELECT id, title, status, forum_thread_id, message_id, description, points, type FROM quests WHERE id = $1", [questId]);
         if (questRes.rowCount === 0) {
             return interaction.reply({
@@ -59,7 +53,6 @@ async function handleQuestCloseButton(interaction) {
         }
         const quest = questRes.rows[0];
         const threadId = quest.forum_thread_id;
-        // すでに終了済み
         if (quest.status === "closed") {
             return interaction.reply({
                 content: "このクエストはすでに終了しています。",
@@ -67,19 +60,14 @@ async function handleQuestCloseButton(interaction) {
             });
         }
         // クエストを終了状態に更新
-        await client_1.db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [quest.id]);
+        await client_1.db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [
+            quest.id,
+        ]);
         // スレッド取得
         const thread = await interaction.guild?.channels.fetch(threadId);
         if (thread && thread.isThread()) {
-            // スレッド名にチェックマークを付ける
-            await thread.setName(`✅ ${quest.title}`);
-            // 終了メッセージ
-            await thread.send(`🛑 このクエストは終了しました。`);
-            // スレッドをロック
-            await thread.setLocked(true);
-            await thread.setArchived(true);
             // ================================
-            // ★ embed 更新（messageId で直接 fetch）
+            // 1. ★ embed 更新（アーカイブ前に必ずやる）
             // ================================
             if (quest.message_id) {
                 const botMessage = await thread.messages.fetch(quest.message_id);
@@ -90,9 +78,18 @@ async function handleQuestCloseButton(interaction) {
                     type: quest.type,
                     questId: quest.id,
                     threadId: quest.forum_thread_id,
+                    status: "closed",
                 });
                 await botMessage.edit({ embeds: [embed], components: [buttons] });
             }
+            // 2. 終了メッセージ
+            await thread.send(`🛑 このクエストは終了しました。`);
+            // 3. スレッド名変更
+            await thread.setName(`✅ ${quest.title}`);
+            // 4. ロック
+            await thread.setLocked(true);
+            // 5. アーカイブ（最後）
+            await thread.setArchived(true);
         }
         // ログチャンネルに通知
         const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
