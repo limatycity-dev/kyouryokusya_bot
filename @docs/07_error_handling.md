@@ -1,4 +1,5 @@
-# 07_error_handling — エラー処理仕様
+```md
+# 07_error_handling — エラー処理仕様（最終版）
 
 協力者求むBOT のエラー処理は、  
 「ユーザーに優しく、開発者に厳しく」を原則として設計されている。
@@ -13,7 +14,7 @@
 
 # 1. 基本方針
 
-## ✔ 1.1 BOT は必ず返信する  
+## ✔ 1.1 BOT は必ず返信する
 Discord の仕様上、  
 **3 秒以内に返信 or defer しないと「問題が発生しました」になる。**
 
@@ -22,23 +23,23 @@ Discord の仕様上、
 
 ---
 
-## ✔ 1.2 ユーザーには安全なメッセージを返す  
+## ✔ 1.2 ユーザーには安全なメッセージを返す
 ユーザー向けのエラーメッセージは以下の形式に統一する。
 
-```
+@@@
 エラーが発生しました。もう一度お試しください。
-```
+@@@
 
 または、機能に応じた簡潔な説明。
 
 ---
 
-## ✔ 1.3 開発者には詳細ログを出す  
+## ✔ 1.3 開発者には詳細ログを出す
 catch 内では必ず console.error を実行する。
 
-```
+@@@
 console.error("QUEST CREATE ERROR:", error);
-```
+@@@
 
 ログには以下を含める：
 
@@ -48,7 +49,7 @@ console.error("QUEST CREATE ERROR:", error);
 
 ---
 
-## ✔ 1.4 DB エラーは必ずログに残す  
+## ✔ 1.4 DB エラーは必ずログに残す
 DB 書き込みは失敗しやすいため、  
 **すべての INSERT / UPDATE / SELECT は try/catch 内で実行する。**
 
@@ -67,7 +68,7 @@ DB 書き込みは失敗しやすいため、
 
 ### ■ 例（setup）
 
-```
+@@@
 try {
   // setup 処理
 } catch (error) {
@@ -77,7 +78,7 @@ try {
     ephemeral: true,
   });
 }
-```
+@@@
 
 ---
 
@@ -91,7 +92,7 @@ try {
 
 ### ■ 例
 
-```
+@@@
 catch (error) {
   console.error("QUEST CREATE MODAL ERROR:", error);
   if (!interaction.replied && !interaction.deferred) {
@@ -101,7 +102,7 @@ catch (error) {
     });
   }
 }
-```
+@@@
 
 ---
 
@@ -117,11 +118,26 @@ catch (error) {
 
 ---
 
+## 4.1 ランキング更新ボタン（ranking-refresh-button.ts）
+
+### ■ よくあるエラー
+- user_stats の取得失敗  
+- ランキングチャンネルのメッセージ更新失敗  
+
+### ■ 対処
+- エラー時は以下を返す：
+
+@@@
+ランキングの更新中にエラーが発生しました。
+@@@
+
+---
+
 # 5. よくあるエラーと対処方針
 
 ---
 
-## 5.1 DB 接続エラー  
+## 5.1 DB 接続エラー
 **症状：**  
 - すべてのコマンドが失敗  
 - ログに `ECONNREFUSED` などが出る  
@@ -132,37 +148,41 @@ catch (error) {
 
 ---
 
-## 5.2 カテゴリ外での操作  
+## 5.2 カテゴリ外での操作
 **症状：**  
 - 「カテゴリ内で実行してください」エラー  
 
 **原因：**  
-- interaction.channel.parentId が settings に存在しない  
+- getCategoryId() が null を返した  
 
 **対処：**  
-- getCategoryId.ts のロジックを確認  
 - settings に正しい category_id が入っているか確認  
+- チャンネル構造が正しいか確認  
 
 ---
 
-## 5.3 モーダルの入力値エラー  
-**症状：**  
+## 5.3 モーダルの入力値エラー
+**症状：**
 - points が数値でない  
 - type が不正  
 
-**対処：**  
+**対処：**
 - バリデーションを追加  
 - エラーメッセージを返す  
 
 ---
 
-## 5.4 ランキング更新エラー  
-**症状：**  
+## 5.4 ランキング更新エラー
+**症状：**
 - ランキングが更新されない  
 - rankingService が例外を吐く  
 
-**対処：**  
-- users テーブルの weekly_* が NULL でないか確認  
+**原因：**
+- user_stats の整合性が崩れている  
+- quest_logs のポイントが不正  
+
+**対処：**
+- user_stats を再計算する（将来のメンテ機能）  
 - quest_logs の整合性を確認  
 
 ---
@@ -171,19 +191,19 @@ catch (error) {
 
 ログは以下の形式に統一する。
 
-```
+@@@
 [ERROR] <機能名> <日時>
 内容: <error.message>
 Stack: <error.stack>
-```
+@@@
 
 例：
 
-```
+@@@
 [ERROR] QUEST COMPLETE 2026-03-20 14:22
 内容: Cannot read properties of undefined
 Stack: ...
-```
+@@@
 
 ---
 
@@ -203,3 +223,4 @@ Stack: ...
 - ログチャンネルへの自動エラー通知  
 - エラーコード体系の導入  
 - Sentry などの外部ログサービス導入  
+```

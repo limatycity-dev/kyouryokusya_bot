@@ -1,4 +1,5 @@
-# 03_state_machine — 状態遷移仕様
+```md
+# 03_state_machine — 状態遷移仕様（最終版）
 
 協力者求むBOT の中心となる「クエスト（quests）」は、  
 明確な状態遷移（State Machine）を持つ。
@@ -23,7 +24,7 @@
 
 # 2. 状態遷移図（概念）
 
-```
+@@@
 ┌────────────┐
 │  active    │
 └─────┬──────┘
@@ -32,7 +33,7 @@
 ┌─────▼──────┐
 │   closed   │
 └────────────┘
-```
+@@@
 
 ---
 
@@ -46,16 +47,16 @@
 - 管理者による強制終了（将来拡張）
 
 ### ■ 遷移時の処理
-- quest_logs に達成ログを追加（完了時のみ）
-- users のポイントを加算
-- weekly_points / weekly_tasks_completed を更新
-- ranking のリアルタイム更新を実行
+- 完了時のみ quest_logs に達成ログを追加  
+- users のポイントを加算  
+- users.weekly_points / weekly_tasks_completed を更新  
+- **user_stats（ランキングキャッシュ）のリアルタイム更新**  
 - スレッドをロック（必要に応じて）
 
 ### ■ 遷移後の状態
 - status = "closed"
 - 編集不可
-- 再度 active に戻ることはない（不可逆）
+- **再度 active に戻ることはない（不可逆）**
 
 ---
 
@@ -63,24 +64,24 @@
 
 クエストは以下の手順で生成される。
 
-```
+@@@
 quest-create → quest-create-modal → quest-create.ts → DB INSERT → active 状態で誕生
-```
+@@@
 
 ### ■ 作成時の処理
 - quests にレコード追加（status = "active"）
 - forum_thread_id を保存
 - issuer_id を保存
-- weekly_tasks_created を加算
-- ranking のリアルタイム更新を実行
+- users.weekly_tasks_created を加算
+- **user_stats のリアルタイム更新（必要に応じて）**
 
 ---
 
 # 5. クエスト編集フロー（active 状態のみ）
 
-```
+@@@
 quest-edit-button → quest-edit-modal → quest-edit-modal.ts → DB UPDATE
-```
+@@@
 
 ### ■ 編集可能な項目
 - title  
@@ -101,29 +102,35 @@ quest-edit-button → quest-edit-modal → quest-edit-modal.ts → DB UPDATE
 
 # 6. クエスト完了フロー（active → closed）
 
-```
-quest-complete-button → quest-complete-button.ts → quest_logs INSERT → users UPDATE → ranking UPDATE → closed
-```
+@@@
+quest-complete-button
+  → quest-complete-button.ts
+  → quest_logs INSERT
+  → users UPDATE
+  → user_stats UPDATE
+  → closed
+@@@
 
 ### ■ 完了時の処理
 - quest_logs にログ追加  
 - users.total_points を加算  
 - users.weekly_points を加算  
 - users.weekly_tasks_completed を加算  
-- ランキングのリアルタイム更新  
+- **user_stats（total_point / weekly_point）をリアルタイム更新**  
 - スレッドに完了メッセージ投稿（実装依存）
 
 ---
 
 # 7. クエストクローズフロー（active → closed）
 
-```
+@@@
 quest-close-button → quest-close-button.ts → DB UPDATE → closed
-```
+@@@
 
 ### ■ クローズ時の処理
 - quest_logs は追加されない  
 - ポイント加算なし  
+- user_stats の更新なし  
 - スレッドをロック（必要に応じて）
 
 ---
@@ -145,3 +152,4 @@ quest-close-button → quest-close-button.ts → DB UPDATE → closed
 - 状態「archived」の追加（古いクエストの整理用）  
 - 状態「draft」の追加（作成前の下書き）  
 - 状態「review」の追加（承認制クエスト）  
+```

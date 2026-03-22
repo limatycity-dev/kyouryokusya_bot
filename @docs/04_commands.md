@@ -1,4 +1,5 @@
-# 04_commands — コマンド仕様
+```md
+# 04_commands — コマンド仕様（最終版）
 
 協力者求むBOT のコマンドは、  
 「管理者向け」「ユーザー向け」「ランキング関連」の 3 つの領域に分類される。
@@ -87,15 +88,17 @@
 ### ■ 実行結果
 - Forum スレッド作成  
 - quests に INSERT  
-- weekly_tasks_created を加算  
+- users.weekly_tasks_created を加算  
+- user_stats のリアルタイム更新  
 - ランキング更新  
 
 ---
 
 ## 2.2 クエスト編集（ボタン＋モーダル）
-```
+
+@@@
 quest-edit-button → quest-edit-modal → quest-edit-modal.ts
-```
+@@@
 
 ### ■ 目的
 - active 状態のクエストを編集する  
@@ -112,9 +115,10 @@ quest-edit-button → quest-edit-modal → quest-edit-modal.ts
 ---
 
 ## 2.3 クエスト完了（ボタン）
-```
+
+@@@
 quest-complete-button.ts
-```
+@@@
 
 ### ■ 目的
 - クエストを完了し、ポイントを付与する  
@@ -124,15 +128,17 @@ quest-complete-button.ts
 - users.total_points を加算  
 - users.weekly_points を加算  
 - users.weekly_tasks_completed を加算  
+- user_stats（total_point / weekly_point）を更新  
 - ランキング更新  
 - status = "closed"  
 
 ---
 
 ## 2.4 クエストクローズ（ボタン）
-```
+
+@@@
 quest-close-button.ts
-```
+@@@
 
 ### ■ 目的
 - クエストをポイント付与なしで終了する  
@@ -148,85 +154,68 @@ quest-close-button.ts
 
 文明の「努力の見える化」を担当するコマンド群。
 
----
+ランキングは専用チャンネル（`settings.ranking_channel_id`）に集約し、  
+以下の運用方針を採用する。
 
-## ランキングコマンド仕様（リデザイン後）
+- **総合ランキング（リアルタイム）**  
+  - チャンネル内に常に 1 メッセージのみ  
+  - クエスト完了時に自動更新  
+  - refresh ボタンあり  
 
-### /ranking
-総合ポイントランキングを表示するためのコマンド。
-
-**挙動：**
-- ランキングチャンネルを取得する（settings.ranking_channel_id）
-- ランキングチャンネル内のメッセージをすべて削除する
-- 最新の総合ポイントランキングを embed で投稿する
-- ボタン（refresh / weekly）を付与する
-
----
-
-### /ranking-weekly
-週間ランキングを表示するためのコマンド。
-
-**挙動：**
-- ランキングチャンネルを取得する
-- ランキングチャンネル内のメッセージをすべて削除する
-- 最新の週間ランキングを embed で投稿する
-- ボタン（back）を付与する
+- **週間ランキング（履歴なし）**  
+  - チャンネル内に常に 1 メッセージのみ  
+  - 週切り替え時に上書き更新  
+  - ボタンなし  
 
 ---
 
-### /ranking-init
-ランキングチャンネルを初期化するためのコマンド。
+## 3.1 /ranking  
+**総合ポイントランキングを表示する。**
 
-**挙動：**
-- ランキングチャンネルを取得する
-- チャンネル内のメッセージをすべて削除する
-- 「ランキングチャンネルを初期化しました」と返す
-
----
-
-### ランキングボタン仕様
-
-#### ranking_refresh
-- 総合ポイントランキングを再描画する
-- updateRealtimeRanking を呼び出す
-
-#### ranking_weekly
-- 週間ランキングを表示する
-- updateWeeklyRanking を呼び出す
-
-#### ranking_back
-- 総合ポイントランキングに戻る
-- updateRealtimeRanking を呼び出す
+### ■ 挙動
+- ランキングチャンネルを取得  
+- チャンネル内のメッセージをすべて削除  
+- `updateRealtimeRanking()` を呼び出し、最新ランキングを投稿  
+- ボタンは **refresh のみ**  
 
 ---
 
-### ボタンハンドラ共通仕様
+## 3.2 /ranking-weekly  
+**週間ランキングを表示する。**
 
-- 必ず `interaction.deferReply({ ephemeral: true })` から開始する
-- ランキングチャンネルは `settings.ranking_channel_id` から取得する
-- 成功時は `interaction.editReply("ランキングを更新しました")`
-- 失敗時は `interaction.editReply("ランキング更新に失敗しました")`
+### ■ 挙動
+- ランキングチャンネルを取得  
+- チャンネル内のメッセージをすべて削除  
+- `updateWeeklyRanking()` を呼び出し、最新週間ランキングを投稿  
+- **ボタンなし**  
+
+---
+
+## 3.3 /ranking-init  
+**ランキングチャンネルを初期化する。**
+
+### ■ 挙動
+- ランキングチャンネルを取得  
+- メッセージをすべて削除  
+- 「ランキングチャンネルを初期化しました」を返す  
 
 ---
 
-# 4. ボタン・モーダル一覧
-
-BOT はスラッシュコマンドだけでなく、  
-UI コンポーネント（ボタン・モーダル）も多用する。
-
----
+# 4. UI コンポーネント一覧
 
 ## 4.1 ボタン
+
 | ファイル | 役割 |
 |----------|------|
 | quest-complete-button.ts | クエスト完了 |
 | quest-close-button.ts | クエスト終了 |
 | quest-edit-button.ts | 編集モーダルを開く |
-| ranking-button.ts | ランキング切り替え |
+| ranking-refresh-button.ts | ランキング再描画（唯一のランキングボタン） |
 
 ---
 
 ## 4.2 モーダル
+
 | ファイル | 役割 |
 |----------|------|
 | quest-create-modal.ts | クエスト作成 |
@@ -234,7 +223,7 @@ UI コンポーネント（ボタン・モーダル）も多用する。
 
 ---
 
-# 5. コマンドの権限体系
+# 5. コマンド権限体系
 
 | コマンド | 権限 |
 |----------|------|
@@ -242,8 +231,8 @@ UI コンポーネント（ボタン・モーダル）も多用する。
 | /register | Administrator |
 | /quest-create | 全員 |
 | /ranking | 全員 |
-| /rankingWeekly | 全員 |
-| /rankingInit | 管理者（実装依存） |
+| /ranking-weekly | 全員 |
+| /ranking-init | 管理者（実装依存） |
 
 ---
 
@@ -253,3 +242,4 @@ UI コンポーネント（ボタン・モーダル）も多用する。
 - /quest-search の追加  
 - /admin add/remove の追加  
 - /rankingMonthly の追加  
+```
