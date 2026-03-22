@@ -10,12 +10,11 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
     const customId = interaction.customId;
     if (!customId.startsWith("quest_complete_")) return;
 
-    // customId = quest_complete_<questId>
     const questId = customId.replace("quest_complete_", "");
     const userId = interaction.user.id;
     const username = interaction.user.username;
 
-    // 1. カテゴリ判定（async 対応）
+    // 1. カテゴリ判定（async）
     const categoryId = await getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
@@ -40,7 +39,7 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
     const { log_channel_id } = settingsRes.rows[0];
     const ranking_channel_id = await getRankingChannelIdByCategoryId(categoryId);
 
-    // 3. クエスト取得（message_id を含む）
+    // 3. クエスト取得
     const questRes = await db.query(
       "SELECT id, type, points, title, status, forum_thread_id, message_id FROM quests WHERE id = $1",
       [questId]
@@ -76,7 +75,7 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       });
     }
 
-    // 5. users（先に作る → 外部キー違反防止）
+    // 5. users（外部キー対策）
     await db.query(
       `
       INSERT INTO users (user_id, name, weekly_tasks_completed)
@@ -89,7 +88,7 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       [userId, username]
     );
 
-    // 6. quest_logs（後で追加）
+    // 6. quest_logs
     await db.query(
       "INSERT INTO quest_logs (user_id, quest_id, points) VALUES ($1,$2,$3)",
       [userId, quest.id, quest.points]
@@ -109,7 +108,13 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       [userId, categoryId, quest.points]
     );
 
-    // 8. ログチャンネルへ送信
+    // 8. まず interaction.reply() を返す（アーカイブ前に必須）
+    await interaction.reply({
+      content: `クエストを達成しました！ (+${quest.points} pt)`,
+      ephemeral: true,
+    });
+
+    // 9. ログチャンネルへ送信
     const totalRes = await db.query(
       "SELECT total_point FROM user_stats WHERE user_id = $1 AND category_id = $2",
       [userId, categoryId]
@@ -135,7 +140,7 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       }
     }
 
-    // 9. 単発クエストは終了処理（messageId を使って embed 更新）
+    // 10. 単発クエスト終了処理
     if (quest.type === "single") {
       await db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [
         quest.id,
@@ -145,47 +150,44 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       if (thread && thread.isThread()) {
         await thread.setName(`✅ ${quest.title}`);
         await thread.send(`🛑 このクエストは終了しました。`);
-        await thread.setLocked(true);
-        await thread.setArchived(true);
       }
 
-      // embed 更新（messageId で直接 fetch）
+      // embed 更新
       if (quest.message_id) {
-        const thread = await interaction.guild?.channels.fetch(threadId);
+        const thread2 = await interaction.guild?.channels.fetch(threadId);
 
-        if (!thread || !thread.isThread()) {
-          return interaction.reply({
-            content: "スレッドが見つかりません。",
-            ephemeral: true,
+        if (thread2 && thread2.isThread()) {
+          const botMessage = await thread2.messages.fetch(quest.message_id);
+
+          const { embed, buttons } = createQuestEmbed({
+            title: quest.title,
+            description: undefined,
+            points: quest.points,
+            type: quest.type,
+            questId: quest.id,
+            threadId: quest.forum_thread_id,
+            status: "closed",
           });
+
+          await botMessage.edit({ embeds: [embed], components: [buttons] });
         }
+      }
 
-        const botMessage = await thread?.messages.fetch(quest.message_id);
-
-        const { embed, buttons } = createQuestEmbed({
-          title: quest.title,
-          description: "",
-          points: quest.points,
-          type: quest.type,
-          questId: quest.id,
-          threadId: quest.forum_thread_id,
-        });
-
-        await botMessage?.edit({ embeds: [embed], components: [buttons] });
+      // 最後にアーカイブ（reply の後）
+      const thread3 = await interaction.guild?.channels.fetch(threadId);
+      if (thread3 && thread3.isThread()) {
+        await thread3.setLocked(true);
+        await thread3.setArchived(true);
       }
     }
 
-    // 10. ランキング更新
+    // 11. ランキング更新
     await rankingService.updateRealtimeRanking(
       interaction.client,
       categoryId,
       ranking_channel_id
     );
 
-    return interaction.reply({
-      content: `クエストを達成しました！ (+${quest.points} pt)`,
-      ephemeral: true,
-    });
   } catch (err) {
     console.error("QUEST COMPLETE ERROR:", err);
     return interaction.reply({

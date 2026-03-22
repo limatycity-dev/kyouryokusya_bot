@@ -7,7 +7,7 @@ import {
 
 export interface QuestData {
   title: string;
-  description: string;
+  description?: string | null;
   points: number;
   type: string;
   questId: number;      // DB ID
@@ -18,9 +18,9 @@ export interface QuestData {
 
 export function createQuestEmbed(quest: QuestData) {
   const embed = new EmbedBuilder()
-    .setColor("#2ECC71") // 仕様書のクエストテーマカラー
+    .setColor("#2ECC71")
     .setTitle(quest.title)
-    .setDescription(quest.description)
+    .setDescription(quest.description ?? null) // ← 修正ポイント
     .addFields(
       { name: "ポイント", value: `${quest.points} pt`, inline: true },
       { name: "タイプ", value: quest.type === "single" ? "単発" : "ループ", inline: true },
@@ -33,17 +33,17 @@ export function createQuestEmbed(quest: QuestData) {
 
   const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`quest_complete_${quest.questId}`) // questId を使用
+      .setCustomId(`quest_complete_${quest.questId}`)
       .setLabel("✅ 達成する")
       .setStyle(ButtonStyle.Success),
 
     new ButtonBuilder()
-      .setCustomId(`quest_edit_${quest.questId}`) // questId を使用
+      .setCustomId(`quest_edit_${quest.questId}`)
       .setLabel("✏️ 編集")
       .setStyle(ButtonStyle.Primary),
 
     new ButtonBuilder()
-      .setCustomId(`quest_close_${quest.questId}`) // questId を使用
+      .setCustomId(`quest_close_${quest.questId}`)
       .setLabel("❌ 終了")
       .setStyle(ButtonStyle.Danger)
   );
