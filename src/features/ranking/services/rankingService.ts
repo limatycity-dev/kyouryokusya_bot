@@ -5,8 +5,7 @@ import {
   toRankingEntriesTotal,
   toRankingEntriesWeekly,
 } from "../utils/rankingUtils";
-import { createRealtimeRankingEmbed } from "../ui/rankingEmbed";
-import { createWeeklyRankingEmbed } from "../ui/weeklyRankingEmbed";
+import { createCombinedRankingEmbed } from "../ui/createCombinedRankingEmbed";
 
 const SYSTEM_WEEKLY_KEY = "weekly_reset_key";
 
@@ -20,34 +19,62 @@ export const rankingService = {
     await rankingRepository.setSystemValue(SYSTEM_WEEKLY_KEY, currentKey);
   },
 
-  async updateRealtimeRanking(client: Client, categoryId: string, rankingChannelId: string): Promise<void> {
-    const channel = await client.channels.fetch(rankingChannelId);
-    if (!channel || !channel.isTextBased()) return;
-
-    const textChannel = channel as TextChannel;
-    const rows = await rankingRepository.getRealtimeRanking(categoryId, 10);
-    const entries = toRankingEntriesTotal(rows);
-    const embed = createRealtimeRankingEmbed(entries);
-
-    const messages = await textChannel.messages.fetch({ limit: 50 });
-    await Promise.all(messages.map((m) => m.delete().catch(() => {})));
-    await textChannel.send({ embeds: [embed] });
-  },
-
-  async updateWeeklyRanking(client: Client, categoryId: string, rankingChannelId: string): Promise<void> {
+  // ============================================
+  // 🆕 複合ランキング（リアルタイム＋週間）を描画
+  // ============================================
+  async updateRankingCombined(
+    client: Client,
+    categoryId: string,
+    rankingChannelId: string
+  ): Promise<void> {
     await this.ensureWeeklyResetIfNeeded();
 
     const channel = await client.channels.fetch(rankingChannelId);
     if (!channel || !channel.isTextBased()) return;
 
     const textChannel = channel as TextChannel;
-    const rows = await rankingRepository.getWeeklyRanking(categoryId, 10);
-    const summary = await rankingRepository.getWeeklySummary(categoryId);
-    const entries = toRankingEntriesWeekly(rows);
-    const embed = createWeeklyRankingEmbed(entries, summary);
 
+    // リアルタイムランキング取得
+    const realtimeRows = await rankingRepository.getRealtimeRanking(categoryId, 10);
+    const realtimeEntries = toRankingEntriesTotal(realtimeRows);
+
+    // 週間ランキング取得
+    const weeklyRows = await rankingRepository.getWeeklyRanking(categoryId, 10);
+    const weeklyEntries = toRankingEntriesWeekly(weeklyRows);
+
+    // 週間サマリー取得
+    const summary = await rankingRepository.getWeeklySummary(categoryId);
+
+    // 複合ランキング embed 作成
+    const embed = createCombinedRankingEmbed(
+      realtimeEntries,
+      weeklyEntries,
+      summary
+    );
+
+    // チャンネル内のメッセージを全削除して 1 つだけ描画
     const messages = await textChannel.messages.fetch({ limit: 50 });
     await Promise.all(messages.map((m) => m.delete().catch(() => {})));
+
     await textChannel.send({ embeds: [embed] });
+  },
+
+  // ============================================
+  // 既存の関数は Combined を呼ぶだけに統合
+  // ============================================
+  async updateRealtimeRanking(
+    client: Client,
+    categoryId: string,
+    rankingChannelId: string
+  ): Promise<void> {
+    return this.updateRankingCombined(client, categoryId, rankingChannelId);
+  },
+
+  async updateWeeklyRanking(
+    client: Client,
+    categoryId: string,
+    rankingChannelId: string
+  ): Promise<void> {
+    return this.updateRankingCombined(client, categoryId, rankingChannelId);
   },
 };
