@@ -21,7 +21,7 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
     }
 
     // カテゴリID取得
-    const categoryId = getCategoryId(interaction.channel);
+    const categoryId = await getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
         content: "この操作は文明カテゴリ内でのみ実行できます。",
@@ -34,6 +34,12 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
       "SELECT log_channel_id FROM settings WHERE category_id = $1",
       [categoryId]
     );
+
+console.log("=== CLOSE BUTTON DEBUG ===");
+console.log("interaction.channel.id:", interaction.channel?.id);
+console.log("interaction.channel.type:", interaction.channel?.type);
+console.log("interaction.channel.parentId:", interaction.channel?.parentId);
+console.log("interaction.channel.constructor:", interaction.channel?.constructor?.name);
 
     if (settingsRes.rowCount === 0) {
       return interaction.reply({

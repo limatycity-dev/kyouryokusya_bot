@@ -12,6 +12,14 @@ export async function getCategoryId(
 
   const guild = channel.guild;
 
+  console.log("=== getCategoryId DEBUG START ===");
+  console.log("channel:", channel?.id);
+  console.log("channel.type:", channel?.type);
+  console.log("channel.parentId:", channel?.parentId);
+  console.log("channel.constructor.name:", channel?.constructor?.name);
+
+
+
   switch (channel.type) {
     // ============================
     // 🧵 Thread → Forum → Category
