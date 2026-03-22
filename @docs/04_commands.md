@@ -150,38 +150,62 @@ quest-close-button.ts
 
 ---
 
-## 3.1 /ranking  
-**現在のランキングを表示する。**
+## ランキングコマンド仕様（リデザイン後）
 
-### ■ 目的
-- リアルタイムランキングを Embed で表示  
+### /ranking
+総合ポイントランキングを表示するためのコマンド。
 
-### ■ 引数
-なし
-
-### ■ 実行結果
-- rankingEmbed を返信  
-
----
-
-## 3.2 /rankingInit  
-**ランキングチャンネルに初期メッセージを作成する。**
-
-### ■ 目的
-- ランキングチャンネルの初期セットアップ  
-- メッセージ ID を保存（必要に応じて）  
-
-### ■ 権限
-- 管理者のみ（実装依存）
+**挙動：**
+- ランキングチャンネルを取得する（settings.ranking_channel_id）
+- ランキングチャンネル内のメッセージをすべて削除する
+- 最新の総合ポイントランキングを embed で投稿する
+- ボタン（refresh / weekly）を付与する
 
 ---
 
-## 3.3 /rankingWeekly  
-**週間ランキングを表示する。**
+### /ranking-weekly
+週間ランキングを表示するためのコマンド。
 
-### ■ 目的
-- weekly_points を元に週間ランキングを生成  
-- weeklyReportEmbed を返信  
+**挙動：**
+- ランキングチャンネルを取得する
+- ランキングチャンネル内のメッセージをすべて削除する
+- 最新の週間ランキングを embed で投稿する
+- ボタン（back）を付与する
+
+---
+
+### /ranking-init
+ランキングチャンネルを初期化するためのコマンド。
+
+**挙動：**
+- ランキングチャンネルを取得する
+- チャンネル内のメッセージをすべて削除する
+- 「ランキングチャンネルを初期化しました」と返す
+
+---
+
+### ランキングボタン仕様
+
+#### ranking_refresh
+- 総合ポイントランキングを再描画する
+- updateRealtimeRanking を呼び出す
+
+#### ranking_weekly
+- 週間ランキングを表示する
+- updateWeeklyRanking を呼び出す
+
+#### ranking_back
+- 総合ポイントランキングに戻る
+- updateRealtimeRanking を呼び出す
+
+---
+
+### ボタンハンドラ共通仕様
+
+- 必ず `interaction.deferReply({ ephemeral: true })` から開始する
+- ランキングチャンネルは `settings.ranking_channel_id` から取得する
+- 成功時は `interaction.editReply("ランキングを更新しました")`
+- 失敗時は `interaction.editReply("ランキング更新に失敗しました")`
 
 ---
 

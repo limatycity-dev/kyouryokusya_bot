@@ -1,91 +1,63 @@
 import { ButtonInteraction, TextChannel } from "discord.js";
+import { getRankingChannel } from "../utils/getRankingChannel";
 import { updateRealtimeRanking } from "../update/updateRealtimeRanking";
 import { updateWeeklyRanking } from "../update/updateWeeklyRanking";
 
 export async function handleRankingButton(interaction: ButtonInteraction) {
   try {
-    // 更新ボタン
-    if (interaction.customId === "ranking_refresh") {
-      const channel = interaction.channel;
+    const customId = interaction.customId;
 
-      if (!channel || !(channel instanceof TextChannel)) {
-        return interaction.reply({
-          content: "このコマンドはテキストチャンネルでのみ使用できます。",
-          ephemeral: true,
-        });
-      }
+    // まず deferReply（仕様書で必須）
+    await interaction.deferReply({ ephemeral: true });
 
+    // ランキングチャンネルを設定から取得（仕様書準拠）
+    const channel = await getRankingChannel(interaction.guildId);
+
+    if (!channel || !(channel instanceof TextChannel)) {
+      return interaction.editReply("❌ ランキングチャンネルが設定されていません。/setup で設定してください。");
+    }
+
+    // -------------------------
+    // 1. リアルタイムランキング更新
+    // -------------------------
+    if (customId === "ranking_refresh") {
       const success = await updateRealtimeRanking(channel);
 
       if (success) {
-        return interaction.reply({
-          content: "✅ ランキングを更新しました！",
-          ephemeral: true,
-        });
+        return interaction.editReply("✅ ランキングを更新しました！");
       } else {
-        return interaction.reply({
-          content: "❌ ランキング更新に失敗しました。",
-          ephemeral: true,
-        });
+        return interaction.editReply("❌ ランキング更新に失敗しました。");
       }
     }
 
-    // 週間ランキングボタン
-    if (interaction.customId === "ranking_weekly") {
-      const channel = interaction.channel;
-
-      if (!channel || !(channel instanceof TextChannel)) {
-        return interaction.reply({
-          content: "このコマンドはテキストチャンネルでのみ使用できます。",
-          ephemeral: true,
-        });
-      }
-
+    // -------------------------
+    // 2. 週間ランキング表示（固定メッセージ更新）
+    // -------------------------
+    if (customId === "ranking_weekly") {
       const success = await updateWeeklyRanking(channel);
 
       if (success) {
-        return interaction.reply({
-          content: "✅ 週間ランキングを表示しました！",
-          ephemeral: true,
-        });
+        return interaction.editReply("📅 週間ランキングを更新しました！");
       } else {
-        return interaction.reply({
-          content: "❌ 週間ランキング表示に失敗しました。",
-          ephemeral: true,
-        });
+        return interaction.editReply("❌ 週間ランキングの更新に失敗しました。");
       }
     }
 
-    // 総合ランキングに戻るボタン
-    if (interaction.customId === "ranking_back") {
-      const channel = interaction.channel;
-
-      if (!channel || !(channel instanceof TextChannel)) {
-        return interaction.reply({
-          content: "このコマンドはテキストチャンネルでのみ使用できます。",
-          ephemeral: true,
-        });
-      }
-
+    // -------------------------
+    // 3. 総合ランキングに戻る
+    // -------------------------
+    if (customId === "ranking_back") {
       const success = await updateRealtimeRanking(channel);
 
       if (success) {
-        return interaction.reply({
-          content: "✅ 総合ランキングに戻りました！",
-          ephemeral: true,
-        });
+        return interaction.editReply("↩️ 総合ランキングに戻りました！");
       } else {
-        return interaction.reply({
-          content: "❌ ランキング更新に失敗しました。",
-          ephemeral: true,
-        });
+        return interaction.editReply("❌ ランキング更新に失敗しました。");
       }
     }
+
   } catch (error) {
     console.error("RANKING BUTTON ERROR:", error);
-    return interaction.reply({
-      content: "ボタン処理中にエラーが発生しました。",
-      ephemeral: true,
-    });
+    return interaction.editReply("❌ ボタン処理中にエラーが発生しました。");
   }
 }

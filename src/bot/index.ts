@@ -1,5 +1,4 @@
-import { Client, GatewayIntentBits } from "discord.js";
-import dotenv from "dotenv";
+import { client } from "../bot/client";
 
 import { registerCommand } from "../features/admin/commands/register";
 import { setupCommand } from "../features/admin/commands/setup";
@@ -19,16 +18,6 @@ import { handleRankingButton } from "../features/ranking/buttons/ranking-button"
 
 import { handleQuestCreateModal } from "../features/quests/quest-create-modal";
 import { handleQuestEditModal } from "../features/quests/quest-edit-modal";
-
-dotenv.config();
-
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
-});
-
-client.once("ready", () => {
-  console.log(`Logged in as ${client.user?.tag}`);
-});
 
 client.on("interactionCreate", async (interaction) => {
   try {
@@ -85,9 +74,5 @@ client.on("interactionCreate", async (interaction) => {
     }
   } catch (error) {
     console.error("INTERACTION ERROR:", error);
-    // ここは仕様書の「エラー処理」章に合わせて、
-    // 各ハンドラー側でユーザー向けメッセージを返す前提の最低限ログに留めている
   }
 });
-
-client.login(process.env.DISCORD_TOKEN);
