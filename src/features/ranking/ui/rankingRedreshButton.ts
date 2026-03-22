@@ -19,7 +19,9 @@ export async function handleRankingRefreshButton(
   client: Client
 ) {
   try {
-    const categoryId = getCategoryId(interaction.channel);
+    // ★ async getCategoryId は必ず await が必要
+    const categoryId = await getCategoryId(interaction.channel);
+
     if (!categoryId) {
       return interaction.reply({
         content: "カテゴリ内で実行してください。",
@@ -29,7 +31,11 @@ export async function handleRankingRefreshButton(
 
     const rankingChannelId = await getRankingChannelIdByCategoryId(categoryId);
 
-    await rankingService.updateRealtimeRanking(client, categoryId, rankingChannelId);
+    await rankingService.updateRealtimeRanking(
+      client,
+      categoryId,
+      rankingChannelId
+    );
 
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({

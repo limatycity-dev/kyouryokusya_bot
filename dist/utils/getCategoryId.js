@@ -2,37 +2,47 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCategoryId = getCategoryId;
 const discord_js_1 = require("discord.js");
-function getCategoryId(channel) {
+/**
+ * 文明カテゴリIDを取得する（完全安定版）
+ */
+async function getCategoryId(channel) {
     if (!channel)
         return null;
+    // Guild 内でしか使わないので GuildBasedChannel に絞る
+    if (!("guild" in channel))
+        return null;
+    const guild = channel.guild;
     switch (channel.type) {
-        // スレッド → 親フォーラム → カテゴリ
+        // ============================
+        // 🧵 Thread → Forum → Category
+        // ============================
         case discord_js_1.ChannelType.PublicThread:
         case discord_js_1.ChannelType.PrivateThread: {
-            const forum = channel.parent;
-            if (!forum)
+            const forumId = channel.parentId;
+            if (!forumId)
+                return null;
+            const forum = await guild.channels.fetch(forumId).catch(() => null);
+            if (!forum || forum.type !== discord_js_1.ChannelType.GuildForum)
                 return null;
             return forum.parentId ?? null;
         }
-        // フォーラム → カテゴリ
+        // ============================
+        // 🗂 Forum → Category
+        // ============================
         case discord_js_1.ChannelType.GuildForum:
             return channel.parentId ?? null;
-        // テキストチャンネル → カテゴリ
+        // ============================
+        // 💬 Text / 🔊 Voice / 📣 Announcement → Category
+        // ============================
         case discord_js_1.ChannelType.GuildText:
-            return channel.parentId ?? null;
-        // ボイスチャンネル → カテゴリ
         case discord_js_1.ChannelType.GuildVoice:
-            return channel.parentId ?? null;
-        // ステージチャンネル → カテゴリ
         case discord_js_1.ChannelType.GuildStageVoice:
-            return channel.parentId ?? null;
-        // アナウンスチャンネル → カテゴリ
         case discord_js_1.ChannelType.GuildAnnouncement:
-            return channel.parentId ?? null;
-        // メディアチャンネル → カテゴリ
         case discord_js_1.ChannelType.GuildMedia:
             return channel.parentId ?? null;
-        // DM / GroupDM / CategoryChannel など → 文明カテゴリ外
+        // ============================
+        // ❌ DM / CategoryChannel / その他
+        // ============================
         default:
             return null;
     }

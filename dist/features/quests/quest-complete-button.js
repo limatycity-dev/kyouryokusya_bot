@@ -11,12 +11,11 @@ async function handleQuestCompleteButton(interaction) {
         const customId = interaction.customId;
         if (!customId.startsWith("quest_complete_"))
             return;
-        // customId = quest_complete_<questId>
         const questId = customId.replace("quest_complete_", "");
         const userId = interaction.user.id;
         const username = interaction.user.username;
-        // 1. カテゴリ判定
-        const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
+        // 1. カテゴリ判定（async）
+        const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
         if (!categoryId) {
             return interaction.reply({
                 content: "この操作は文明カテゴリ内でのみ実行できます。",
@@ -33,7 +32,7 @@ async function handleQuestCompleteButton(interaction) {
         }
         const { log_channel_id } = settingsRes.rows[0];
         const ranking_channel_id = await (0, settingRepository_1.getRankingChannelIdByCategoryId)(categoryId);
-        // 3. クエスト取得（message_id を含む）
+        // 3. クエスト取得
         const questRes = await client_1.db.query("SELECT id, type, points, title, status, forum_thread_id, message_id FROM quests WHERE id = $1", [questId]);
         if (questRes.rows.length === 0) {
             return interaction.reply({
@@ -57,7 +56,7 @@ async function handleQuestCompleteButton(interaction) {
                 ephemeral: true,
             });
         }
-        // 5. users（先に作る → 外部キー違反防止）
+        // 5. users（外部キー対策）
         await client_1.db.query(`
       INSERT INTO users (user_id, name, weekly_tasks_completed)
       VALUES ($1, $2, 1)
@@ -66,7 +65,7 @@ async function handleQuestCompleteButton(interaction) {
         name = COALESCE(NULLIF($2, ''), users.name),
         weekly_tasks_completed = users.weekly_tasks_completed + 1
       `, [userId, username]);
-        // 6. quest_logs（後で追加）
+        // 6. quest_logs
         await client_1.db.query("INSERT INTO quest_logs (user_id, quest_id, points) VALUES ($1,$2,$3)", [userId, quest.id, quest.points]);
         // 7. user_stats 更新
         await client_1.db.query(`
@@ -78,7 +77,12 @@ async function handleQuestCompleteButton(interaction) {
         weekly_point = user_stats.weekly_point + EXCLUDED.weekly_point,
         updated_at = NOW()
       `, [userId, categoryId, quest.points]);
-        // 8. ログチャンネルへ送信
+        // 8. まず interaction.reply() を返す（アーカイブ前に必須）
+        await interaction.reply({
+            content: `クエストを達成しました！ (+${quest.points} pt)`,
+            ephemeral: true,
+        });
+        // 9. ログチャンネルへ送信
         const totalRes = await client_1.db.query("SELECT total_point FROM user_stats WHERE user_id = $1 AND category_id = $2", [userId, categoryId]);
         const totalPoints = totalRes.rows[0]?.total_point ?? 0;
         const loopCountRes = await client_1.db.query("SELECT COUNT(*) FROM quest_logs WHERE quest_id = $1 AND user_id = $2", [quest.id, userId]);
@@ -92,7 +96,7 @@ async function handleQuestCompleteButton(interaction) {
                 await logChannel.send(`🎉 ${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n${loopCount} 回目の達成 / 累計ポイント: ${totalPoints} pt`);
             }
         }
-        // 9. 単発クエストは終了処理（messageId を使って embed 更新）
+        // 10. 単発クエスト終了処理
         if (quest.type === "single") {
             await client_1.db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [
                 quest.id,
@@ -101,36 +105,33 @@ async function handleQuestCompleteButton(interaction) {
             if (thread && thread.isThread()) {
                 await thread.setName(`✅ ${quest.title}`);
                 await thread.send(`🛑 このクエストは終了しました。`);
-                await thread.setLocked(true);
-                await thread.setArchived(true);
             }
-            // embed 更新（messageId で直接 fetch）
+            // embed 更新
             if (quest.message_id) {
-                const thread = await interaction.guild?.channels.fetch(threadId);
-                if (!thread || !thread.isThread()) {
-                    return interaction.reply({
-                        content: "スレッドが見つかりません。",
-                        ephemeral: true,
+                const thread2 = await interaction.guild?.channels.fetch(threadId);
+                if (thread2 && thread2.isThread()) {
+                    const botMessage = await thread2.messages.fetch(quest.message_id);
+                    const { embed, buttons } = (0, quest_embed_1.createQuestEmbed)({
+                        title: quest.title,
+                        description: undefined,
+                        points: quest.points,
+                        type: quest.type,
+                        questId: quest.id,
+                        threadId: quest.forum_thread_id,
+                        status: "closed",
                     });
+                    await botMessage.edit({ embeds: [embed], components: [buttons] });
                 }
-                const botMessage = await thread?.messages.fetch(quest.message_id);
-                const { embed, buttons } = (0, quest_embed_1.createQuestEmbed)({
-                    title: quest.title,
-                    description: "", // description は変わらないので再取得不要
-                    points: quest.points,
-                    type: quest.type,
-                    questId: quest.id,
-                    threadId: quest.forum_thread_id,
-                });
-                await botMessage?.edit({ embeds: [embed], components: [buttons] });
+            }
+            // 最後にアーカイブ（reply の後）
+            const thread3 = await interaction.guild?.channels.fetch(threadId);
+            if (thread3 && thread3.isThread()) {
+                await thread3.setLocked(true);
+                await thread3.setArchived(true);
             }
         }
-        // 10. ランキング更新
+        // 11. ランキング更新
         await rankingService_1.rankingService.updateRealtimeRanking(interaction.client, categoryId, ranking_channel_id);
-        return interaction.reply({
-            content: `クエストを達成しました！ (+${quest.points} pt)`,
-            ephemeral: true,
-        });
     }
     catch (err) {
         console.error("QUEST COMPLETE ERROR:", err);

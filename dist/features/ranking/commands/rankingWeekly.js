@@ -11,7 +11,8 @@ exports.rankingWeeklyCommand = {
         .setDescription("文明の週間ランキングを表示します。"),
     async execute(interaction, client) {
         try {
-            const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
+            // ★ async getCategoryId は必ず await が必要
+            const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
             if (!categoryId) {
                 return interaction.reply({
                     content: "カテゴリ内で実行してください。",

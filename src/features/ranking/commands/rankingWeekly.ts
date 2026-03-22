@@ -10,7 +10,9 @@ export const rankingWeeklyCommand = {
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     try {
-      const categoryId = getCategoryId(interaction.channel);
+      // ★ async getCategoryId は必ず await が必要
+      const categoryId = await getCategoryId(interaction.channel);
+
       if (!categoryId) {
         return interaction.reply({
           content: "カテゴリ内で実行してください。",
@@ -20,7 +22,11 @@ export const rankingWeeklyCommand = {
 
       const rankingChannelId = await getRankingChannelIdByCategoryId(categoryId);
 
-      await rankingService.updateWeeklyRanking(client, categoryId, rankingChannelId);
+      await rankingService.updateWeeklyRanking(
+        client,
+        categoryId,
+        rankingChannelId
+      );
 
       return interaction.reply({
         content: "週間ランキングを更新しました。",
