@@ -1,21 +1,27 @@
 import { client } from "../bot/client";
 
+// Admin commands
 import { registerCommand } from "../features/admin/commands/register";
 import { setupCommand } from "../features/admin/commands/setup";
-
-import * as ranking from "../features/ranking/commands/ranking";
-import * as rankingInit from "../features/ranking/commands/rankingInit";
-import * as rankingWeekly from "../features/ranking/commands/rankingWeekly";
-
-import { questCreateCommand } from "../features/quests/quest-create";
 import { adminCommand } from "../features/admin/admin";
 
+// Ranking commands
+import { rankingCommand } from "../features/ranking/commands/ranking";
+import { rankingInitCommand } from "../features/ranking/commands/rankingInit";
+import { rankingWeeklyCommand } from "../features/ranking/commands/rankingWeekly";
+
+// Quest commands
+import { questCreateCommand } from "../features/quests/quest-create";
+
+// Quest buttons
 import { handleQuestCompleteButton } from "../features/quests/quest-complete-button";
 import { handleQuestCloseButton } from "../features/quests/quest-close-button";
 import { handleQuestEditButton } from "../features/quests/quest-edit-button";
 
-import { handleRankingButton } from "../features/ranking/buttons/ranking-button";
+// Ranking button（新仕様）
+import { handleRankingRefreshButton } from "../features/ranking/ui/rankingRedreshButton";
 
+// Quest modals
 import { handleQuestCreateModal } from "../features/quests/quest-create-modal";
 import { handleQuestEditModal } from "../features/quests/quest-edit-modal";
 
@@ -41,15 +47,15 @@ client.on("interactionCreate", async (interaction) => {
           return;
 
         case "ranking":
-          await ranking.execute(interaction);
+          await rankingCommand.execute(interaction, client);
           return;
 
         case "ranking-init":
-          await rankingInit.execute(interaction);
+          await rankingInitCommand.execute(interaction, client);
           return;
 
         case "ranking-weekly":
-          await rankingWeekly.execute(interaction);
+          await rankingWeeklyCommand.execute(interaction, client);
           return;
 
         default:
@@ -62,7 +68,7 @@ client.on("interactionCreate", async (interaction) => {
       await handleQuestCompleteButton(interaction);
       await handleQuestCloseButton(interaction);
       await handleQuestEditButton(interaction);
-      await handleRankingButton(interaction);
+      await handleRankingRefreshButton(interaction, client);
       return;
     }
 

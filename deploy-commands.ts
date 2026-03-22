@@ -4,9 +4,9 @@ import dotenv from "dotenv";
 import { registerCommand } from "./src/features/admin/commands/register";
 import { setupCommand } from "./src/features/admin/commands/setup";
 
-import * as ranking from "./src/features/ranking/commands/ranking";
-import * as rankingInit from "./src/features/ranking/commands/rankingInit";
-import * as rankingWeekly from "./src/features/ranking/commands/rankingWeekly";
+import { rankingCommand } from "./src/features/ranking/commands/ranking";
+import { rankingInitCommand } from "./src/features/ranking/commands/rankingInit";
+import { rankingWeeklyCommand } from "./src/features/ranking/commands/rankingWeekly";
 
 import { questCreateCommand } from "./src/features/quests/quest-create";
 import { adminCommand } from "./src/features/admin/admin";
@@ -20,9 +20,9 @@ const commands = [
   adminCommand.data.toJSON(),
 
   // ★ ランキングコマンド（data / execute 形式）
-  ranking.data.toJSON(),
-  rankingInit.data.toJSON(),
-  rankingWeekly.data.toJSON(),
+  rankingCommand.data.toJSON(),
+  rankingInitCommand.data.toJSON(),
+  rankingWeeklyCommand.data.toJSON(),
 ];
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN!);

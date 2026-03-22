@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminCommand = void 0;
 const discord_js_1 = require("discord.js");
 const client_1 = require("../../db/client");
+const getCategoryId_1 = require("../../utils/getCategoryId");
 exports.adminCommand = {
     data: new discord_js_1.SlashCommandBuilder()
         .setName("admin")
@@ -18,14 +19,27 @@ exports.adminCommand = {
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
         const targetUser = interaction.options.getUser("user", true);
-        // settings から category_id を取得
-        const settingsRes = await client_1.db.query("SELECT category_id FROM settings LIMIT 1");
-        const categoryId = settingsRes.rows[0].category_id;
+        // 共通関数でカテゴリID取得（仕様書準拠）
+        const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
+        if (!categoryId) {
+            return interaction.reply({
+                content: "このコマンドは文明カテゴリ内で実行してください。",
+                ephemeral: true,
+            });
+        }
+        // settings に存在する文明か確認
+        const settingsRes = await client_1.db.query("SELECT 1 FROM settings WHERE category_id = $1", [categoryId]);
+        if (settingsRes.rows.length === 0) {
+            return interaction.reply({
+                content: "このカテゴリは文明として登録されていません。",
+                ephemeral: true,
+            });
+        }
         // 実行者が文明BOTの管理者か確認
         const adminCheck = await client_1.db.query("SELECT 1 FROM admins WHERE category_id = $1 AND user_id = $2", [categoryId, interaction.user.id]);
-        if (adminCheck.rowCount === 0) {
+        if (adminCheck.rows.length === 0) {
             return interaction.reply({
-                content: "あなたは管理者ではありません。",
+                content: "あなたはこの文明の管理者ではありません。",
                 ephemeral: true,
             });
         }

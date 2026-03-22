@@ -1,29 +1,44 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.data = void 0;
-exports.execute = execute;
-// src/features/ranking/commands/rankingInit.ts
+exports.rankingInitCommand = void 0;
 const discord_js_1 = require("discord.js");
-const client_1 = require("../../../db/client");
-const createInitialRankingMessage_1 = require("../setup/createInitialRankingMessage");
-exports.data = new discord_js_1.SlashCommandBuilder()
-    .setName("ranking-init")
-    .setDescription("ランキングメッセージを初期化します。");
-async function execute(interaction) {
-    const channel = interaction.channel;
-    if (!channel || !(channel instanceof discord_js_1.TextChannel)) {
-        return interaction.reply("このコマンドはサーバー内のテキストチャンネルでのみ使用できます。");
-    }
-    const result = await client_1.db.query(`SELECT value FROM system WHERE key = 'ranking_message_id'`);
-    if (result.rowCount > 0) {
-        return interaction.reply("ランキングメッセージはすでに作成されています。");
-    }
-    try {
-        await (0, createInitialRankingMessage_1.createInitialRankingMessage)(channel);
-        await interaction.reply("ランキングメッセージを作成しました！");
-    }
-    catch (error) {
-        console.error("RANKING INIT ERROR:", error);
-        return interaction.reply("ランキングメッセージの作成に失敗しました。");
-    }
-}
+const getCategoryId_1 = require("../../../utils/getCategoryId");
+const settingRepository_1 = require("../repository/settingRepository");
+exports.rankingInitCommand = {
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName("ranking-init")
+        .setDescription("ランキングチャンネルを初期化します。"),
+    async execute(interaction, client) {
+        try {
+            const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
+            if (!categoryId) {
+                return interaction.reply({
+                    content: "カテゴリ内で実行してください。",
+                    ephemeral: true,
+                });
+            }
+            const rankingChannelId = await (0, settingRepository_1.getRankingChannelIdByCategoryId)(categoryId);
+            const channel = await client.channels.fetch(rankingChannelId);
+            if (!channel || !channel.isTextBased()) {
+                return interaction.reply({
+                    content: "ランキングチャンネルが見つかりませんでした。",
+                    ephemeral: true,
+                });
+            }
+            const textChannel = channel;
+            const messages = await textChannel.messages.fetch({ limit: 100 });
+            await Promise.all(messages.map((m) => m.delete().catch(() => { })));
+            return interaction.reply({
+                content: "ランキングチャンネルを初期化しました。",
+                ephemeral: true,
+            });
+        }
+        catch (error) {
+            console.error("RANKING INIT COMMAND ERROR:", error);
+            return interaction.reply({
+                content: "ランキングチャンネルの初期化中にエラーが発生しました。",
+                ephemeral: true,
+            });
+        }
+    },
+};

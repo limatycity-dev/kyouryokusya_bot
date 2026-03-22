@@ -1,54 +1,45 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRealtimeRanking = getRealtimeRanking;
-exports.getWeeklyReport = getWeeklyReport;
-// src/features/ranking/services/rankingService.ts
-const client_1 = require("../../../db/client");
-async function getRealtimeRanking() {
-    const result = await client_1.db.query(`
-    SELECT name, total_points
-    FROM users
-    ORDER BY total_points DESC
-    LIMIT 10;
-  `);
-    const rows = result.rows;
-    // ✅ 修正: ユーザーが1人も登録されていない場合を対応
-    if (rows.length === 0) {
-        return {
-            ranks: ["1"],
-            names: ["（まだ誰も達成していません）"],
-            points: [0],
-        };
-    }
-    return {
-        ranks: rows.map((_, i) => String(i + 1)),
-        names: rows.map(r => r.name || "（未設定）"), // ✅ name が空の場合の対応
-        points: rows.map(r => r.total_points),
-    };
-}
-async function getWeeklyReport() {
-    const result = await client_1.db.query(`
-    SELECT 
-      name,
-      weekly_points,
-      weekly_tasks_completed
-    FROM users
-    WHERE weekly_points > 0
-    ORDER BY weekly_points DESC
-    LIMIT 10;
-  `);
-    const rows = result.rows;
-    // ✅ 週間レポート用：データがない場合
-    if (rows.length === 0) {
-        return {
-            ranks: ["1"],
-            names: ["（まだ誰も達成していません）"],
-            points: [0],
-        };
-    }
-    return {
-        ranks: rows.map((_, i) => String(i + 1)),
-        names: rows.map(r => `${r.name || "（未設定）"} (${r.weekly_tasks_completed}回)`), // ✅ name が空の場合の対応
-        points: rows.map(r => r.weekly_points),
-    };
-}
+exports.rankingService = void 0;
+const rankingRepository_1 = require("../repository/rankingRepository");
+const dataUtils_1 = require("../utils/dataUtils");
+const rankingUtils_1 = require("../utils/rankingUtils");
+const rankingEmbed_1 = require("../ui/rankingEmbed");
+const weeklyRankingEmbed_1 = require("../ui/weeklyRankingEmbed");
+const SYSTEM_WEEKLY_KEY = "weekly_reset_key";
+exports.rankingService = {
+    async ensureWeeklyResetIfNeeded() {
+        const currentKey = (0, dataUtils_1.getCurrentWeekKey)();
+        const stored = await rankingRepository_1.rankingRepository.getSystemValue(SYSTEM_WEEKLY_KEY);
+        if (stored === currentKey)
+            return;
+        await rankingRepository_1.rankingRepository.resetWeekly();
+        await rankingRepository_1.rankingRepository.setSystemValue(SYSTEM_WEEKLY_KEY, currentKey);
+    },
+    async updateRealtimeRanking(client, categoryId, rankingChannelId) {
+        const channel = await client.channels.fetch(rankingChannelId);
+        if (!channel || !channel.isTextBased())
+            return;
+        const textChannel = channel;
+        const rows = await rankingRepository_1.rankingRepository.getRealtimeRanking(categoryId, 10);
+        const entries = (0, rankingUtils_1.toRankingEntriesTotal)(rows);
+        const embed = (0, rankingEmbed_1.createRealtimeRankingEmbed)(entries);
+        const messages = await textChannel.messages.fetch({ limit: 50 });
+        await Promise.all(messages.map((m) => m.delete().catch(() => { })));
+        await textChannel.send({ embeds: [embed] });
+    },
+    async updateWeeklyRanking(client, categoryId, rankingChannelId) {
+        await this.ensureWeeklyResetIfNeeded();
+        const channel = await client.channels.fetch(rankingChannelId);
+        if (!channel || !channel.isTextBased())
+            return;
+        const textChannel = channel;
+        const rows = await rankingRepository_1.rankingRepository.getWeeklyRanking(categoryId, 10);
+        const summary = await rankingRepository_1.rankingRepository.getWeeklySummary(categoryId);
+        const entries = (0, rankingUtils_1.toRankingEntriesWeekly)(rows);
+        const embed = (0, weeklyRankingEmbed_1.createWeeklyRankingEmbed)(entries, summary);
+        const messages = await textChannel.messages.fetch({ limit: 50 });
+        await Promise.all(messages.map((m) => m.delete().catch(() => { })));
+        await textChannel.send({ embeds: [embed] });
+    },
+};

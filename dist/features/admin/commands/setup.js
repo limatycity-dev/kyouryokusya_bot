@@ -17,7 +17,12 @@ exports.setupCommand = {
         try {
             if (!interaction.guild) {
                 return interaction.reply({
-                    content: "このコマンドはサーバー内でのみ使用できます。",
+                    embeds: [
+                        new discord_js_1.EmbedBuilder()
+                            .setColor("#ff4d4d")
+                            .setTitle("エラー")
+                            .setDescription("このコマンドはサーバー内でのみ使用できます。"),
+                    ],
                     ephemeral: true,
                 });
             }
@@ -25,15 +30,56 @@ exports.setupCommand = {
             const rawName = interaction.options.getString("name", true);
             if (rawName.length > 50) {
                 return interaction.reply({
-                    content: "カテゴリ名は50文字以内で入力してください。",
+                    embeds: [
+                        new discord_js_1.EmbedBuilder()
+                            .setColor("#ff4d4d")
+                            .setTitle("入力エラー")
+                            .setDescription("カテゴリ名は50文字以内で入力してください。"),
+                    ],
                     ephemeral: true,
                 });
             }
+            // -----------------------------
+            // BOT 権限チェック
+            // -----------------------------
+            const botMember = guild.members.me;
+            if (!botMember?.permissions.has(discord_js_1.PermissionFlagsBits.ManageChannels)) {
+                return interaction.reply({
+                    embeds: [
+                        new discord_js_1.EmbedBuilder()
+                            .setColor("#ff4d4d")
+                            .setTitle("権限エラー")
+                            .setDescription("BOT に `チャンネル管理` 権限がありません。\n権限を付与してから再度お試しください。"),
+                    ],
+                    ephemeral: true,
+                });
+            }
+            // -----------------------------
+            // カテゴリ作成
+            // -----------------------------
             const categoryName = `╭──── ⡇${rawName}`;
             const category = await guild.channels.create({
                 name: categoryName,
                 type: discord_js_1.ChannelType.GuildCategory,
             });
+            // -----------------------------
+            // settings 重複チェック（作成後の category.id を使う）
+            // -----------------------------
+            const exists = await client_1.db.query("SELECT 1 FROM settings WHERE category_id = $1", [category.id]);
+            if ((exists?.rowCount ?? 0) > 0) {
+                return interaction.reply({
+                    embeds: [
+                        new discord_js_1.EmbedBuilder()
+                            .setColor("#ff4d4d")
+                            .setTitle("セットアップ済み")
+                            .setDescription("このカテゴリはすでにセットアップされています。"),
+                    ],
+                    ephemeral: true,
+                });
+            }
+            // -----------------------------
+            // チャンネル作成
+            // -----------------------------
             const questBoard = await guild.channels.create({
                 name: "クエスト掲示板",
                 type: discord_js_1.ChannelType.GuildForum,
@@ -49,29 +95,39 @@ exports.setupCommand = {
                 type: discord_js_1.ChannelType.GuildText,
                 parent: category.id,
             });
-            // ✅ 修正: ranking_channel_id カラムを追加
+            // -----------------------------
+            // settings 保存（仕様書準拠）
+            // -----------------------------
             await client_1.db.query(`INSERT INTO settings (
-        category_id,
-        quest_board_channel_id,
-        log_channel_id,
-        info_channel_id,
-        ranking_channel_id
-      ) VALUES ($1, $2, $3, $4, $5)`, [
-                category.id,
-                questBoard.id,
-                logChannel.id,
-                logChannel.id, // ← info_channel_id（ログ出力用）
-                rankingChannel.id, // ← ranking_channel_id（ランキング表示用）
-            ]);
+          category_id,
+          quest_board_channel_id,
+          log_channel_id,
+          ranking_channel_id
+        ) VALUES ($1, $2, $3, $4)`, [category.id, questBoard.id, logChannel.id, rankingChannel.id]);
+            // -----------------------------
+            // 管理者登録
+            // -----------------------------
             await client_1.db.query("INSERT INTO admins (category_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", [category.id, interaction.user.id]);
-            return interaction.reply(`カテゴリ **${categoryName}** を作成し、必要なチャンネルをセットアップしました！`);
+            // -----------------------------
+            // 成功メッセージ
+            // -----------------------------
+            const embed = new discord_js_1.EmbedBuilder()
+                .setColor("#4da6ff")
+                .setTitle("セットアップ完了")
+                .setDescription(`カテゴリ **${categoryName}** を作成し、必要なチャンネルをセットアップしました。`);
+            return interaction.reply({ embeds: [embed] });
         }
         catch (error) {
             console.error("SETUP ERROR:", error);
             return interaction.reply({
-                content: "セットアップ中にエラーが発生しました。",
+                embeds: [
+                    new discord_js_1.EmbedBuilder()
+                        .setColor("#ff4d4d")
+                        .setTitle("内部エラー")
+                        .setDescription("セットアップ中にエラーが発生しました。\n管理者に連絡してください。"),
+                ],
                 ephemeral: true,
             });
         }
-    }
+    },
 };

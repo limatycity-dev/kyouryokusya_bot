@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleQuestCompleteButton = handleQuestCompleteButton;
-const discord_js_1 = require("discord.js");
 const client_1 = require("../../db/client");
 const getCategoryId_1 = require("../../utils/getCategoryId");
-const updateRealtimeRanking_1 = require("../ranking/update/updateRealtimeRanking");
+const rankingService_1 = require("../ranking/services/rankingService");
+const settingRepository_1 = require("../ranking/repository/settingRepository");
 async function handleQuestCompleteButton(interaction) {
     try {
         const customId = interaction.customId;
@@ -12,88 +12,118 @@ async function handleQuestCompleteButton(interaction) {
             return;
         const threadId = customId.replace("quest_complete_", "");
         const userId = interaction.user.id;
-        const username = interaction.user.username; // ✅ 追加: username を取得
-        // util でカテゴリID取得（スレッド → フォーラム → カテゴリ）
-        const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
+        const username = interaction.user.username;
+        // ================================
+        // 1. カテゴリ判定（文明仕様）
+        // ================================
+        const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
         if (!categoryId) {
             return interaction.reply({
-                content: "カテゴリ内で実行してください。",
+                content: "この操作は文明カテゴリ内でのみ実行できます。",
                 ephemeral: true,
             });
         }
-        // settings をカテゴリIDで取得（info_channel_id と ranking_channel_id 両方取得）
-        const settingsRes = await client_1.db.query("SELECT info_channel_id, ranking_channel_id FROM settings WHERE category_id = $1", [categoryId]);
+        // ================================
+        // 2. settings 取得（log / ranking）
+        // ================================
+        const settingsRes = await client_1.db.query("SELECT log_channel_id FROM settings WHERE category_id = $1", [categoryId]);
         if (settingsRes.rowCount === 0) {
             return interaction.reply({
                 content: "このカテゴリは /setup が実行されていません。",
                 ephemeral: true,
             });
         }
-        const infoChannelId = settingsRes.rows[0].info_channel_id;
-        const rankingChannelId = settingsRes.rows[0].ranking_channel_id;
-        // クエスト取得
-        const questRes = await client_1.db.query("SELECT id, type, points, title FROM quests WHERE forum_thread_id = $1", [threadId]);
+        const { log_channel_id } = settingsRes.rows[0];
+        const ranking_channel_id = await (0, settingRepository_1.getRankingChannelIdByCategoryId)(categoryId);
+        // ================================
+        // 3. クエスト取得
+        // ================================
+        const questRes = await client_1.db.query("SELECT id, type, points, title, status FROM quests WHERE forum_thread_id = $1", [threadId]);
         if (questRes.rowCount === 0) {
             return interaction.reply({
-                content: "このクエスト情報が見つかりません。",
+                content: "クエスト情報が見つかりません。",
                 ephemeral: true,
             });
         }
         const quest = questRes.rows[0];
-        // 単発クエストは1回だけ
+        if (quest.status === "closed") {
+            return interaction.reply({
+                content: "このクエストはすでに終了しています。",
+                ephemeral: true,
+            });
+        }
+        // ================================
+        // 4. 単発クエストの二重達成チェック
+        // ================================
         const logCheck = await client_1.db.query("SELECT id FROM quest_logs WHERE quest_id = $1 AND user_id = $2", [quest.id, userId]);
-        if ((logCheck.rowCount ?? 0) > 0 && quest.type === "single") {
+        if (logCheck.rows.length > 0 && quest.type === "single") {
             return interaction.reply({
                 content: "このクエストはすでに達成済みです。",
                 ephemeral: true,
             });
         }
-        // 達成ログ追加
+        // ================================
+        // 5. quest_logs 追加
+        // ================================
         await client_1.db.query("INSERT INTO quest_logs (user_id, quest_id, points) VALUES ($1,$2,$3)", [userId, quest.id, quest.points]);
-        // ✅ 修正: name と weekly_points も保存、username を使用
-        await client_1.db.query(`INSERT INTO users (user_id, name, total_points, weekly_points, weekly_tasks_completed)
-       VALUES ($1, $2, $3, $4, 1)
-       ON CONFLICT (user_id)
-       DO UPDATE SET
-         name = COALESCE(NULLIF($2, ''), users.name),
-         total_points = users.total_points + EXCLUDED.total_points,
-         weekly_points = users.weekly_points + EXCLUDED.weekly_points,
-         weekly_tasks_completed = users.weekly_tasks_completed + 1`, [userId, username, quest.points, quest.points]);
-        // 累計ポイント取得
-        const userPointRes = await client_1.db.query("SELECT total_points FROM users WHERE user_id = $1", [userId]);
-        const totalPoints = userPointRes.rows[0].total_points;
-        // ループクエストの累計回数
+        // ================================
+        // 6. users（週間統計のみ更新）
+        // ================================
+        await client_1.db.query(`
+      INSERT INTO users (user_id, name, weekly_tasks_completed)
+      VALUES ($1, $2, 1)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        name = COALESCE(NULLIF($2, ''), users.name),
+        weekly_tasks_completed = users.weekly_tasks_completed + 1
+      `, [userId, username]);
+        // ================================
+        // 7. user_stats（ランキング用キャッシュ）
+        // ================================
+        await client_1.db.query(`
+      INSERT INTO user_stats (user_id, category_id, total_point, weekly_point, updated_at)
+      VALUES ($1, $2, $3, $3, NOW())
+      ON CONFLICT (user_id, category_id)
+      DO UPDATE SET
+        total_point = user_stats.total_point + EXCLUDED.total_point,
+        weekly_point = user_stats.weekly_point + EXCLUDED.weekly_point,
+        updated_at = NOW()
+      `, [userId, categoryId, quest.points]);
+        // ================================
+        // 8. ログチャンネルへ送信
+        // ================================
+        const totalRes = await client_1.db.query("SELECT total_point FROM user_stats WHERE user_id = $1 AND category_id = $2", [userId, categoryId]);
+        const totalPoints = totalRes.rows[0]?.total_point ?? 0;
         const loopCountRes = await client_1.db.query("SELECT COUNT(*) FROM quest_logs WHERE quest_id = $1 AND user_id = $2", [quest.id, userId]);
         const loopCount = Number(loopCountRes.rows[0].count);
-        // ✅ info_channel_id を使用してログチャンネルに送信
-        const infoChannel = await interaction.guild?.channels.fetch(infoChannelId);
-        if (infoChannel?.isTextBased()) {
+        const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
+        if (logChannel?.isTextBased()) {
             if (quest.type === "single") {
-                await infoChannel.send(`${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n累計ポイント: ${totalPoints} pt`);
+                await logChannel.send(`🎉 ${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n累計ポイント: ${totalPoints} pt`);
             }
             else {
-                await infoChannel.send(`${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n累計 ${loopCount} 回目 / 累計ポイント: ${totalPoints} pt`);
+                await logChannel.send(`🎉 ${username} さんが「${quest.title}」を達成しました！（+${quest.points} pt）\n${loopCount} 回目の達成 / 累計ポイント: ${totalPoints} pt`);
             }
         }
-        // 単発クエストならクローズ
+        // ================================
+        // 9. 単発クエストは終了処理
+        // ================================
         if (quest.type === "single") {
-            await client_1.db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [quest.id]);
+            await client_1.db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [
+                quest.id,
+            ]);
             const thread = await interaction.guild?.channels.fetch(threadId);
             if (thread && thread.isThread()) {
-                await thread.setName(`✅ ${thread.name}`);
+                await thread.setName(`✅ ${quest.title}`);
+                await thread.send(`🛑 このクエストは終了しました。`);
                 await thread.setLocked(true);
+                await thread.setArchived(true);
             }
         }
-        // ✅ ランキングチャンネルを更新
-        if (rankingChannelId) {
-            const rankingChannel = await interaction.guild?.channels.fetch(rankingChannelId);
-            if (rankingChannel instanceof discord_js_1.TextChannel) {
-                const success = await (0, updateRealtimeRanking_1.updateRealtimeRanking)(rankingChannel);
-                if (!success) {
-                    console.warn("⚠️ ランキング更新に失敗しました");
-                }
-            }
-        }
+        // ================================
+        // 10. ランキング更新（文明仕様）
+        // ================================
+        await rankingService_1.rankingService.updateRealtimeRanking(interaction.client, categoryId, ranking_channel_id);
         return interaction.reply({
             content: `クエストを達成しました！ (+${quest.points} pt)`,
             ephemeral: true,

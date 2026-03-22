@@ -1,33 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.data = void 0;
-exports.execute = execute;
+exports.rankingCommand = void 0;
 const discord_js_1 = require("discord.js");
-const client_1 = require("../../../db/client");
 const rankingService_1 = require("../services/rankingService");
-const rankingEmbed_1 = require("../embeds/rankingEmbed");
-exports.data = new discord_js_1.SlashCommandBuilder()
-    .setName("ranking")
-    .setDescription("文明ポイントのリアルタイムランキングを更新します。");
-async function execute(interaction) {
-    const channel = interaction.channel;
-    if (!channel || !(channel instanceof discord_js_1.TextChannel)) {
-        return interaction.reply("このコマンドはサーバー内のテキストチャンネルでのみ使用できます。");
-    }
-    const result = await client_1.db.query(`SELECT value FROM system WHERE key = 'ranking_message_id'`);
-    const messageId = result.rows[0]?.value;
-    if (!messageId) {
-        return interaction.reply("❌ ランキングメッセージがまだ作成されていません。\n`/ranking-init` を実行してください。");
-    }
-    try {
-        const message = await channel.messages.fetch(messageId);
-        const ranking = await (0, rankingService_1.getRealtimeRanking)();
-        const { embed, buttons } = (0, rankingEmbed_1.createRankingEmbed)(ranking);
-        await message.edit({ embeds: [embed], components: [buttons] });
-        await interaction.reply("✅ ランキングを更新しました！");
-    }
-    catch (error) {
-        console.error("❌ ランキング更新エラー:", error);
-        return interaction.reply("❌ ランキングメッセージの更新に失敗しました。\n`/ranking-init` コマンドを実行してください。");
-    }
-}
+const getCategoryId_1 = require("../../../utils/getCategoryId");
+const settingRepository_1 = require("../repository/settingRepository");
+exports.rankingCommand = {
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName("ranking")
+        .setDescription("文明の総合ランキングを表示します。"),
+    async execute(interaction, client) {
+        try {
+            const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
+            if (!categoryId) {
+                return interaction.reply({
+                    content: "カテゴリ内で実行してください。",
+                    ephemeral: true,
+                });
+            }
+            const rankingChannelId = await (0, settingRepository_1.getRankingChannelIdByCategoryId)(categoryId);
+            await rankingService_1.rankingService.updateRealtimeRanking(client, categoryId, rankingChannelId);
+            return interaction.reply({
+                content: "ランキングを更新しました。",
+                ephemeral: true,
+            });
+        }
+        catch (error) {
+            console.error("RANKING COMMAND ERROR:", error);
+            return interaction.reply({
+                content: "ランキングの更新中にエラーが発生しました。",
+                ephemeral: true,
+            });
+        }
+    },
+};

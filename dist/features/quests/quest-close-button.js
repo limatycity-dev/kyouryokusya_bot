@@ -10,34 +10,33 @@ async function handleQuestCloseButton(interaction) {
             return;
         const threadId = customId.replace("quest_close_", "");
         const userId = interaction.user.id;
-        // util でカテゴリID取得（スレッド → フォーラム → カテゴリ）
-        const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
+        // カテゴリID取得（仕様書準拠）
+        const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
         if (!categoryId) {
             return interaction.reply({
-                content: "カテゴリ内で実行してください。",
+                content: "このコマンドは文明カテゴリ内で実行してください。",
                 ephemeral: true,
             });
         }
-        // settings をカテゴリIDで取得
-        const settingsRes = await client_1.db.query("SELECT info_channel_id FROM settings WHERE category_id = $1", // ✅ 修正: info_channel_id を使用
-        [categoryId]);
+        // settings 取得（log_channel_id を使用）
+        const settingsRes = await client_1.db.query("SELECT log_channel_id FROM settings WHERE category_id = $1", [categoryId]);
         if (settingsRes.rowCount === 0) {
             return interaction.reply({
                 content: "このカテゴリは /setup が実行されていません。",
                 ephemeral: true,
             });
         }
-        const { info_channel_id } = settingsRes.rows[0]; // ✅ 修正: info_channel_id
+        const { log_channel_id } = settingsRes.rows[0];
         // 管理者判定
         const adminRes = await client_1.db.query("SELECT 1 FROM admins WHERE category_id = $1 AND user_id = $2", [categoryId, userId]);
         if (adminRes.rowCount === 0) {
             return interaction.reply({
-                content: "あなたにはこのクエストを削除する権限がありません。",
+                content: "あなたはこの文明の管理者ではありません。",
                 ephemeral: true,
             });
         }
-        // クエスト取得
-        const questRes = await client_1.db.query("SELECT id, title FROM quests WHERE forum_thread_id = $1", [threadId]);
+        // クエスト取得（status も確認）
+        const questRes = await client_1.db.query("SELECT id, title, status FROM quests WHERE forum_thread_id = $1", [threadId]);
         if (questRes.rowCount === 0) {
             return interaction.reply({
                 content: "クエスト情報が見つかりません。",
@@ -45,27 +44,40 @@ async function handleQuestCloseButton(interaction) {
             });
         }
         const quest = questRes.rows[0];
-        // クエスト削除
-        await client_1.db.query("DELETE FROM quests WHERE id = $1", [quest.id]);
-        // ログチャンネルに通知
-        const infoChannel = await interaction.guild?.channels.fetch(info_channel_id);
-        if (infoChannel?.isTextBased()) {
-            await infoChannel.send(`${interaction.user.username} さんがクエスト「${quest.title}」を削除しました。`);
+        // すでに終了済み
+        if (quest.status === "closed") {
+            return interaction.reply({
+                content: "このクエストはすでに終了しています。",
+                ephemeral: true,
+            });
         }
-        // スレッド削除
+        // クエストを終了状態に更新
+        await client_1.db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [quest.id]);
+        // スレッド取得
         const thread = await interaction.guild?.channels.fetch(threadId);
         if (thread && thread.isThread()) {
-            await thread.delete();
+            // スレッド名にチェックマークを付ける
+            await thread.setName(`✅ ${quest.title}`);
+            // 終了メッセージ
+            await thread.send(`🛑 このクエストは終了しました。`);
+            // スレッドをロック
+            await thread.setLocked(true);
+            await thread.setArchived(true);
+        }
+        // ログチャンネルに通知
+        const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
+        if (logChannel?.isTextBased()) {
+            await logChannel.send(`🛑 管理者 ${interaction.user.username} さんが「${quest.title}」を終了しました。`);
         }
         return interaction.reply({
-            content: `クエスト「${quest.title}」を削除しました。`,
+            content: `クエスト「${quest.title}」を終了しました。`,
             ephemeral: true,
         });
     }
     catch (err) {
         console.error("QUEST CLOSE ERROR:", err);
         return interaction.reply({
-            content: "削除処理中にエラーが発生しました。",
+            content: "終了処理中にエラーが発生しました。",
             ephemeral: true,
         });
     }

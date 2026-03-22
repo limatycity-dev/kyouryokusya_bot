@@ -13,15 +13,15 @@ exports.registerCommand = {
         try {
             const userId = interaction.user.id;
             const name = interaction.user.username;
-            // ✅ 修正: user_id を使用
-            const existing = await client_1.db.query("SELECT * FROM users WHERE user_id = $1", [userId]);
-            if (existing.rowCount > 0) {
+            // 既存チェック（rows.length を使用）
+            const existing = await client_1.db.query("SELECT 1 FROM users WHERE user_id = $1", [userId]);
+            if (existing.rows.length > 0) {
                 return interaction.reply({
                     content: "すでに登録されています。",
                     ephemeral: true,
                 });
             }
-            // ✅ 修正: user_id を使用
+            // INSERT（DEFAULT カラムは自動で入る）
             await client_1.db.query("INSERT INTO users (user_id, name) VALUES ($1, $2)", [userId, name]);
             return interaction.reply({
                 content: `${name} さんを登録しました！`,
@@ -31,7 +31,7 @@ exports.registerCommand = {
         catch (error) {
             console.error("REGISTER ERROR:", error);
             return interaction.reply({
-                content: "登録中にエラーが発生しました。",
+                content: "登録中にエラーが発生しました。管理者に連絡してください。",
                 ephemeral: true,
             });
         }

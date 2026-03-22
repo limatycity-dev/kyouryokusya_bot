@@ -1,7 +1,8 @@
 import { ButtonInteraction, TextChannel } from "discord.js";
 import { db } from "../../db/client";
 import { getCategoryId } from "../../utils/getCategoryId";
-import { updateRealtimeRanking } from "../ranking/update/updateRealtimeRanking";
+import { rankingService } from "../ranking/services/rankingService";
+import { getRankingChannelIdByCategoryId } from "../ranking/repository/settingRepository";
 
 export async function handleQuestCompleteButton(interaction: ButtonInteraction) {
   try {
@@ -12,18 +13,22 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
     const userId = interaction.user.id;
     const username = interaction.user.username;
 
-    // カテゴリID取得（仕様書準拠）
+    // ================================
+    // 1. カテゴリ判定（文明仕様）
+    // ================================
     const categoryId = getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
-        content: "このコマンドは文明カテゴリ内で実行してください。",
+        content: "この操作は文明カテゴリ内でのみ実行できます。",
         ephemeral: true,
       });
     }
 
-    // settings 取得（log_channel_id / ranking_channel_id）
+    // ================================
+    // 2. settings 取得（log / ranking）
+    // ================================
     const settingsRes = await db.query(
-      "SELECT log_channel_id, ranking_channel_id FROM settings WHERE category_id = $1",
+      "SELECT log_channel_id FROM settings WHERE category_id = $1",
       [categoryId]
     );
 
@@ -34,9 +39,12 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       });
     }
 
-    const { log_channel_id, ranking_channel_id } = settingsRes.rows[0];
+    const { log_channel_id } = settingsRes.rows[0];
+    const ranking_channel_id = await getRankingChannelIdByCategoryId(categoryId);
 
-    // クエスト取得（status も取得）
+    // ================================
+    // 3. クエスト取得
+    // ================================
     const questRes = await db.query(
       "SELECT id, type, points, title, status FROM quests WHERE forum_thread_id = $1",
       [threadId]
@@ -51,7 +59,6 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
 
     const quest = questRes.rows[0];
 
-    // 終了済みクエストは達成不可
     if (quest.status === "closed") {
       return interaction.reply({
         content: "このクエストはすでに終了しています。",
@@ -59,53 +66,75 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       });
     }
 
-    // 単発クエストは1回だけ
+    // ================================
+    // 4. 単発クエストの二重達成チェック
+    // ================================
     const logCheck = await db.query(
       "SELECT id FROM quest_logs WHERE quest_id = $1 AND user_id = $2",
       [quest.id, userId]
     );
 
-    if ((logCheck.rowCount ?? 0) > 0 && quest.type === "single") {
+    if (logCheck.rows.length > 0 && quest.type === "single") {
       return interaction.reply({
         content: "このクエストはすでに達成済みです。",
         ephemeral: true,
       });
     }
 
-    // 達成ログ追加
+    // ================================
+    // 5. quest_logs 追加
+    // ================================
     await db.query(
       "INSERT INTO quest_logs (user_id, quest_id, points) VALUES ($1,$2,$3)",
       [userId, quest.id, quest.points]
     );
 
-    // users テーブル更新（category_id 必須）
+    // ================================
+    // 6. users（週間統計のみ更新）
+    // ================================
     await db.query(
-      `INSERT INTO users (category_id, user_id, name, total_points, weekly_points, weekly_tasks_completed)
-       VALUES ($1, $2, $3, $4, $5, 1)
-       ON CONFLICT (category_id, user_id)
-       DO UPDATE SET
-         name = COALESCE(NULLIF($3, ''), users.name),
-         total_points = users.total_points + EXCLUDED.total_points,
-         weekly_points = users.weekly_points + EXCLUDED.weekly_points,
-         weekly_tasks_completed = users.weekly_tasks_completed + 1`,
-      [categoryId, userId, username, quest.points, quest.points]
+      `
+      INSERT INTO users (user_id, name, weekly_tasks_completed)
+      VALUES ($1, $2, 1)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        name = COALESCE(NULLIF($2, ''), users.name),
+        weekly_tasks_completed = users.weekly_tasks_completed + 1
+      `,
+      [userId, username]
     );
 
-    // 累計ポイント取得
-    const userPointRes = await db.query(
-      "SELECT total_points FROM users WHERE category_id = $1 AND user_id = $2",
-      [categoryId, userId]
+    // ================================
+    // 7. user_stats（ランキング用キャッシュ）
+    // ================================
+    await db.query(
+      `
+      INSERT INTO user_stats (user_id, category_id, total_point, weekly_point, updated_at)
+      VALUES ($1, $2, $3, $3, NOW())
+      ON CONFLICT (user_id, category_id)
+      DO UPDATE SET
+        total_point = user_stats.total_point + EXCLUDED.total_point,
+        weekly_point = user_stats.weekly_point + EXCLUDED.weekly_point,
+        updated_at = NOW()
+      `,
+      [userId, categoryId, quest.points]
     );
-    const totalPoints = userPointRes.rows[0].total_points;
 
-    // ループクエストの累計回数
+    // ================================
+    // 8. ログチャンネルへ送信
+    // ================================
+    const totalRes = await db.query(
+      "SELECT total_point FROM user_stats WHERE user_id = $1 AND category_id = $2",
+      [userId, categoryId]
+    );
+    const totalPoints = totalRes.rows[0]?.total_point ?? 0;
+
     const loopCountRes = await db.query(
       "SELECT COUNT(*) FROM quest_logs WHERE quest_id = $1 AND user_id = $2",
       [quest.id, userId]
     );
     const loopCount = Number(loopCountRes.rows[0].count);
 
-    // ログチャンネルに送信（仕様書準拠）
     const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
     if (logChannel?.isTextBased()) {
       if (quest.type === "single") {
@@ -119,35 +148,31 @@ export async function handleQuestCompleteButton(interaction: ButtonInteraction) 
       }
     }
 
-    // 単発クエストは達成後に終了（仕様書準拠）
+    // ================================
+    // 9. 単発クエストは終了処理
+    // ================================
     if (quest.type === "single") {
-      await db.query(
-        "UPDATE quests SET status = 'closed' WHERE id = $1",
-        [quest.id]
-      );
+      await db.query("UPDATE quests SET status = 'closed' WHERE id = $1", [
+        quest.id,
+      ]);
 
       const thread = await interaction.guild?.channels.fetch(threadId);
       if (thread && thread.isThread()) {
-        // スレッド名を仕様書準拠に変更
         await thread.setName(`✅ ${quest.title}`);
-
-        // 終了メッセージ
         await thread.send(`🛑 このクエストは終了しました。`);
-
-        // ロック＋アーカイブ
         await thread.setLocked(true);
         await thread.setArchived(true);
       }
     }
 
-    // ランキング更新
-    if (ranking_channel_id) {
-      const rankingChannel = await interaction.guild?.channels.fetch(ranking_channel_id);
-      if (rankingChannel instanceof TextChannel) {
-        const success = await updateRealtimeRanking(rankingChannel);
-        if (!success) console.warn("⚠️ ランキング更新に失敗しました");
-      }
-    }
+    // ================================
+    // 10. ランキング更新（文明仕様）
+    // ================================
+    await rankingService.updateRealtimeRanking(
+      interaction.client,
+      categoryId,
+      ranking_channel_id
+    );
 
     return interaction.reply({
       content: `クエストを達成しました！ (+${quest.points} pt)`,
