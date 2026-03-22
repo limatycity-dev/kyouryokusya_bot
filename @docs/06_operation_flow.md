@@ -1,3 +1,4 @@
+
 ```md
 # 06_operation_flow — 運用フロー（最終版）
 
@@ -40,11 +41,13 @@
 ## 2.1 クエスト作成フロー
 
 @@@
-/quest-create → モーダル入力 → Forum スレッド生成 → quests INSERT → ランキング更新
+/quest-create → モーダル入力 → Forum スレッド生成 → embed 投稿 → message_id 保存 → quests INSERT → ランキング更新
 @@@
 
 ### ■ 作成時の処理
 - Forum スレッドを作成  
+- クエスト embed を投稿  
+- **投稿したメッセージの message_id を quests.message_id に保存（安定版の中核）**
 - quests にレコード追加（status = active）  
 - users.weekly_tasks_created を加算  
 - user_stats のリアルタイム更新  
@@ -55,7 +58,7 @@
 ## 2.2 クエスト編集フロー
 
 @@@
-編集ボタン → 編集モーダル → quests UPDATE
+編集ボタン → 編集モーダル → quests UPDATE → message_id で embed を直接更新
 @@@
 
 ### ■ 編集可能
@@ -66,13 +69,14 @@
 
 ### ■ 制約
 - closed 状態では編集不可  
+- **embed 更新は message_id を使って行う（スレッド内検索は行わない）**
 
 ---
 
 ## 2.3 クエスト完了フロー（active → closed）
 
 @@@
-完了ボタン → quest_logs INSERT → users UPDATE → user_stats UPDATE → ランキング更新 → closed
+完了ボタン → quest_logs INSERT → users UPDATE → user_stats UPDATE → ランキング更新 → message_id で embed 更新 → closed
 @@@
 
 ### ■ 完了時の処理
@@ -82,19 +86,21 @@
 - users.weekly_tasks_completed を加算  
 - user_stats（total_point / weekly_point）を更新  
 - ランキング更新  
+- **単発クエスト（single）は message_id を使って embed を終了状態に更新**
 
 ---
 
 ## 2.4 クエストクローズフロー（active → closed）
 
 @@@
-終了ボタン → quests.status = closed
+終了ボタン → quests.status = closed → message_id で embed を終了状態に更新
 @@@
 
 ### ■ 特徴
 - ポイント付与なし  
 - ログ追加なし  
 - ランキング更新なし  
+- **message_id を使って embed を終了状態に更新（安定版）**
 
 ---
 

@@ -1,3 +1,4 @@
+
 ```md
 # 04_commands — コマンド仕様（最終版）
 
@@ -76,18 +77,20 @@
 - クエストを active 状態で生成  
 - Forum スレッドを作成  
 - quests に INSERT  
+- **クエスト embed の message_id を保存（安定版の中核）**
 
 ### ■ 引数
 | 名前 | 型 | 必須 | 説明 |
 |------|-----|------|------|
 | title | string | Yes | クエスト名 |
 | points | number | Yes | ポイント |
-| type | string | Yes | 'single' or 'roop' |
+| type | string | Yes | 'single' or 'loop' |
 | description | string | No | 説明文 |
 
 ### ■ 実行結果
 - Forum スレッド作成  
 - quests に INSERT  
+- **BOT が投稿したクエスト embed の message_id を保存**  
 - users.weekly_tasks_created を加算  
 - user_stats のリアルタイム更新  
 - ランキング更新  
@@ -111,6 +114,7 @@ quest-edit-button → quest-edit-modal → quest-edit-modal.ts
 
 ### ■ 実行結果
 - quests を UPDATE  
+- **message_id を使用して embed を直接更新（スレッド内検索は行わない）**
 
 ---
 
@@ -131,6 +135,7 @@ quest-complete-button.ts
 - user_stats（total_point / weekly_point）を更新  
 - ランキング更新  
 - status = "closed"  
+- **単発クエスト（single）は message_id を使って embed を終了状態に更新**
 
 ---
 
@@ -147,6 +152,7 @@ quest-close-button.ts
 - quests.status = "closed"  
 - ログ追加なし  
 - ランキング更新なし  
+- **message_id を使って embed を終了状態に更新**
 
 ---
 

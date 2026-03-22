@@ -1,6 +1,7 @@
 import { ButtonInteraction } from "discord.js";
 import { db } from "../../db/client";
 import { getCategoryId } from "../../utils/getCategoryId";
+import { createQuestEmbed } from "./quest-embed";
 
 export async function handleQuestCloseButton(interaction: ButtonInteraction) {
   try {
@@ -11,7 +12,7 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
     const questId = customId.replace("quest_close_", "");
     const userId = interaction.user.id;
 
-    // スレッド内で押されているかチェック（文明仕様）
+    // スレッド内で押されているかチェック
     if (!interaction.channel?.isThread()) {
       return interaction.reply({
         content: "終了操作はクエストスレッド内のボタンから実行してください。",
@@ -56,9 +57,9 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
       });
     }
 
-    // クエスト取得（questId ベース）
+    // クエスト取得（message_id を含む）
     const questRes = await db.query(
-      "SELECT id, title, status, forum_thread_id FROM quests WHERE id = $1",
+      "SELECT id, title, status, forum_thread_id, message_id, description, points, type FROM quests WHERE id = $1",
       [questId]
     );
 
@@ -88,6 +89,7 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
 
     // スレッド取得
     const thread = await interaction.guild?.channels.fetch(threadId);
+
     if (thread && thread.isThread()) {
       // スレッド名にチェックマークを付ける
       await thread.setName(`✅ ${quest.title}`);
@@ -98,6 +100,24 @@ export async function handleQuestCloseButton(interaction: ButtonInteraction) {
       // スレッドをロック
       await thread.setLocked(true);
       await thread.setArchived(true);
+
+      // ================================
+      // ★ embed 更新（messageId で直接 fetch）
+      // ================================
+      if (quest.message_id) {
+        const botMessage = await thread.messages.fetch(quest.message_id);
+
+        const { embed, buttons } = createQuestEmbed({
+          title: quest.title,
+          description: quest.description,
+          points: quest.points,
+          type: quest.type,
+          questId: quest.id,
+          threadId: quest.forum_thread_id,
+        });
+
+        await botMessage.edit({ embeds: [embed], components: [buttons] });
+      }
     }
 
     // ログチャンネルに通知

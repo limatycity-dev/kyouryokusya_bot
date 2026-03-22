@@ -1,4 +1,3 @@
-```md
 # 02_db_schema — データベース構造（最終版）
 
 協力者求むBOT のデータベースは、  
@@ -33,6 +32,8 @@ CREATE TABLE settings (
 
 カテゴリごとに発行されるクエストを管理するテーブル。
 
+**★ message_id 対応により、クエスト embed のメッセージIDを保持するようになった。**
+
 @@@
 CREATE TABLE quests (
   id SERIAL PRIMARY KEY,
@@ -40,10 +41,11 @@ CREATE TABLE quests (
   title TEXT NOT NULL,
   description TEXT,
   points INTEGER NOT NULL,
-  type TEXT NOT NULL,          -- 'single' or 'roop'
+  type TEXT NOT NULL,          -- 'single' or 'loop'
   status TEXT NOT NULL,        -- 'active' or 'closed'
   forum_thread_id TEXT NOT NULL,
   issuer_id TEXT NOT NULL,
+  message_id TEXT,             -- ★ 追加：クエスト embed のメッセージID
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 @@@
@@ -52,6 +54,7 @@ CREATE TABLE quests (
 - クエストの基本情報  
 - 難易度・ポイント・状態管理  
 - Discord フォーラムスレッドとの紐づけ  
+- **message_id により、編集・達成・終了時に embed を直接更新できる（安定版）**
 
 ---
 
@@ -186,4 +189,3 @@ settings (category)
 - 月次ランキング（monthly）  
 - user_stats の自動再計算ジョブ  
 - system のキー体系の整理  
-```

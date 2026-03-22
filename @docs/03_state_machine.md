@@ -1,3 +1,4 @@
+
 ```md
 # 03_state_machine — 状態遷移仕様（最終版）
 
@@ -52,6 +53,7 @@
 - users.weekly_points / weekly_tasks_completed を更新  
 - **user_stats（ランキングキャッシュ）のリアルタイム更新**  
 - スレッドをロック（必要に応じて）
+- **message_id を使用してクエスト embed を終了状態に更新（安定版）**
 
 ### ■ 遷移後の状態
 - status = "closed"
@@ -72,8 +74,9 @@ quest-create → quest-create-modal → quest-create.ts → DB INSERT → active
 - quests にレコード追加（status = "active"）
 - forum_thread_id を保存
 - issuer_id を保存
+- **BOT が投稿したクエスト embed の message_id を保存（安定版の中核）**
 - users.weekly_tasks_created を加算
-- **user_stats のリアルタイム更新（必要に応じて）**
+- user_stats のリアルタイム更新（必要に応じて）
 
 ---
 
@@ -97,6 +100,7 @@ quest-edit-button → quest-edit-modal → quest-edit-modal.ts → DB UPDATE
 
 ### ■ 制約
 - closed 状態では編集不可
+- **embed 更新は message_id を使用して行う（スレッド内検索は行わない）**
 
 ---
 
@@ -117,7 +121,8 @@ quest-complete-button
 - users.weekly_points を加算  
 - users.weekly_tasks_completed を加算  
 - **user_stats（total_point / weekly_point）をリアルタイム更新**  
-- スレッドに完了メッセージ投稿（実装依存）
+- スレッドに完了メッセージ投稿  
+- **単発クエスト（single）は message_id を使って embed を終了状態に更新**
 
 ---
 
@@ -131,7 +136,8 @@ quest-close-button → quest-close-button.ts → DB UPDATE → closed
 - quest_logs は追加されない  
 - ポイント加算なし  
 - user_stats の更新なし  
-- スレッドをロック（必要に応じて）
+- スレッドをロック  
+- **message_id を使って embed を終了状態に更新（安定版）**
 
 ---
 

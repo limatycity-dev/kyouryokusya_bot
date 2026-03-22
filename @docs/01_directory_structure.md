@@ -1,3 +1,5 @@
+
+```md
 # 01_directory_structure — ディレクトリ構造
 
 協力者求むBOT のソースコード構造は、  
@@ -50,7 +52,8 @@ BOT の起動処理を担当するレイヤー。
 ---
 
 #### /src/features/quests
-クエスト（タスク）管理機能。
+クエスト（タスク）管理機能。  
+**message_id 対応により、クエスト embed のメッセージを直接参照する安定版構造になった。**
 
 ```
 /src/features/quests
@@ -63,13 +66,23 @@ BOT の起動処理を担当するレイヤー。
   └─ quest-embed.ts
 ```
 
+### ■ 役割
 - クエスト作成  
+  - スレッド作成  
+  - embed 投稿  
+  - **message_id を DB に保存（安定版の中核）**
 - 編集  
+  - DB の message_id を使って embed を直接編集  
 - 完了  
+  - ポイント付与  
+  - 単発クエストは message_id を使って終了状態に更新  
 - クローズ  
+  - message_id を使って embed を終了状態に更新  
 - Embed 生成  
 - モーダル処理  
-など、クエストに関するすべての操作を担当する。
+
+**Discord フォーラムスレッドのシステムメッセージ混在問題を回避するため、  
+スレッド内のメッセージ検索は行わず、message_id を唯一の参照元とする。**
 
 ---
 
@@ -140,17 +153,18 @@ BOT の起動処理を担当するレイヤー。
   ├── 04_commands.md
   ├── 05_ui_spec.md
   ├── 06_operation_flow.md
-  └──  07_error_handling.md
+  └── 07_error_handling.md
 ```
 
 ---
 
 ## /@docs/spec
 - 統合仕様書（spec_full.md）の出力先  
-- Githubにて管理し、毎回copilotにはRAWURLにて共有する
+- Githubにて管理し、毎回 RAW URL で共有する
 
 ---
 
 ## プロジェクトルート
 - build_spec.js（仕様書統合スクリプト）  
-- package.json  
+- package.json
+```

@@ -1,3 +1,4 @@
+
 ```md
 # 05_ui_spec — UI仕様（Embed / ボタン / モーダル）
 
@@ -13,6 +14,9 @@
 クエストは Forum スレッドを中心に管理され、  
 Embed・ボタン・モーダルが連携して動作する。
 
+**message_id 対応により、クエスト embed は “スレッド内の特定メッセージ” として管理される。  
+編集・完了・終了時は message_id を使って embed を直接更新する。**
+
 ---
 
 ## 1.1 クエスト作成 Embed（quest-embed.ts）
@@ -20,6 +24,7 @@ Embed・ボタン・モーダルが連携して動作する。
 ### ■ 目的
 - クエストの概要を視覚的に表示する  
 - Forum スレッドのトップメッセージとして使用  
+- **このメッセージの message_id を DB に保存し、後続操作の唯一の参照元とする**
 
 ### ■ 表示項目
 | 項目 | 内容 |
@@ -27,9 +32,9 @@ Embed・ボタン・モーダルが連携して動作する。
 | タイトル | クエスト名 |
 | 説明 | description |
 | ポイント | points |
-| 種類 | type（single / roop） |
+| 種類 | type（single / loop） |
 | 発行者 | issuer_id |
-| 状態 | active |
+| 状態 | active / closed |
 
 ### ■ デザイン
 - ベージュ系の背景色（文明の文化色）  
@@ -43,12 +48,18 @@ Embed・ボタン・モーダルが連携して動作する。
 ### ■ 完了ボタン（quest-complete-button.ts）
 - ラベル：**完了**  
 - スタイル：Success（緑）  
-- アクション：クエスト完了 → ログ追加 → ランキング更新  
+- アクション：  
+  - クエスト完了  
+  - ポイント付与  
+  - ランキング更新  
+  - **単発クエストは message_id を使って embed を終了状態に更新**
 
 ### ■ クローズボタン（quest-close-button.ts）
 - ラベル：**終了**  
 - スタイル：Danger（赤）  
-- アクション：ポイント付与なしで終了  
+- アクション：  
+  - ポイント付与なしで終了  
+  - **message_id を使って embed を終了状態に更新**
 
 ### ■ 編集ボタン（quest-edit-button.ts）
 - ラベル：**編集**  
@@ -61,6 +72,7 @@ Embed・ボタン・モーダルが連携して動作する。
 
 ### ■ 目的
 - active 状態のクエストを編集する  
+- **編集後は message_id を使って embed を直接更新する**
 
 ### ■ 入力項目
 | フィールド | 型 | 必須 | 説明 |
@@ -68,7 +80,7 @@ Embed・ボタン・モーダルが連携して動作する。
 | title | text | Yes | クエスト名 |
 | description | paragraph | No | 説明文 |
 | points | number | Yes | ポイント |
-| type | text | Yes | 'single' or 'roop' |
+| type | text | Yes | 'single' or 'loop' |
 
 ### ■ 制約
 - closed 状態では開けない  

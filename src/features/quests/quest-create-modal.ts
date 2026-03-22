@@ -14,23 +14,9 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
     const pointsRaw = interaction.fields.getTextInputValue("points");
     const points = Number(pointsRaw);
 
-    if (isNaN(points)) {
+    if (isNaN(points) || points <= 0 || points > 9999) {
       return interaction.reply({
-        content: "ポイントは数値で入力してください。",
-        ephemeral: true,
-      });
-    }
-
-    if (points <= 0) {
-      return interaction.reply({
-        content: "ポイントは 1 以上の数値を入力してください。",
-        ephemeral: true,
-      });
-    }
-
-    if (points > 9999) {
-      return interaction.reply({
-        content: "ポイントは 9999 以下で入力してください。",
+        content: "ポイントは 1〜9999 の数値で入力してください。",
         ephemeral: true,
       });
     }
@@ -41,7 +27,7 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
 
     const issuerId = interaction.user.id;
 
-    // カテゴリID取得（仕様書準拠）
+    // カテゴリID取得
     const categoryId = getCategoryId(interaction.channel);
     if (!categoryId) {
       return interaction.reply({
@@ -50,7 +36,7 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
       });
     }
 
-    // settings 取得（クエスト掲示板 + ログチャンネル）
+    // settings 取得
     const settingsRes = await db.query(
       "SELECT quest_board_channel_id, log_channel_id FROM settings WHERE category_id = $1",
       [categoryId]
@@ -75,13 +61,13 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
       });
     }
 
-    // スレッド作成（仕様書準拠）
+    // スレッド作成
     const thread = await forum.threads.create({
       name: title,
       message: { content: "📝 クエストが作成されました！" },
     });
 
-    // DB にクエスト保存
+    // まずは仮の quest を作成（message_id は後で更新）
     const questRes = await db.query(
       `INSERT INTO quests (
         category_id, title, description, points, type, status, forum_thread_id, issuer_id
@@ -92,7 +78,7 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
 
     const questId = questRes.rows[0].id;
 
-    // embed + ボタン（仕様書準拠）
+    // embed + ボタン
     const { embed, buttons } = createQuestEmbed({
       title,
       description,
@@ -102,9 +88,19 @@ export async function handleQuestCreateModal(interaction: ModalSubmitInteraction
       threadId: thread.id,
     });
 
-    await thread.send({ embeds: [embed], components: [buttons] });
+    // BOT が送るクエスト embed（← これが本体）
+    const questMessage = await thread.send({
+      embeds: [embed],
+      components: [buttons],
+    });
 
-    // ログチャンネルに通知（仕様書準拠）
+    // ここで messageId を保存（文明BOT 安定版の核心）
+    await db.query(
+      "UPDATE quests SET message_id = $1 WHERE id = $2",
+      [questMessage.id, questId]
+    );
+
+    // ログチャンネルに通知
     const logChannel = await interaction.guild?.channels.fetch(log_channel_id);
     if (logChannel?.isTextBased()) {
       await logChannel.send(

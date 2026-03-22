@@ -24,7 +24,7 @@ async function handleQuestEditModal(interaction) {
         }
         newPoints = num;
     }
-    // スレッド内で実行されているか（文明仕様）
+    // スレッド内で実行されているか
     if (!interaction.channel?.isThread()) {
         return interaction.reply({
             content: "編集はクエストスレッド内のボタンから実行してください。",
@@ -56,8 +56,8 @@ async function handleQuestEditModal(interaction) {
             ephemeral: true,
         });
     }
-    // クエスト取得（questId ベース）
-    const questRes = await client_1.db.query("SELECT id, title, description, points, type, status, forum_thread_id FROM quests WHERE id = $1", [questId]);
+    // クエスト取得（message_id を含む）
+    const questRes = await client_1.db.query("SELECT id, title, description, points, type, status, forum_thread_id, message_id FROM quests WHERE id = $1", [questId]);
     if (questRes.rowCount === 0) {
         return interaction.reply({
             content: "クエスト情報が見つかりません。",
@@ -79,15 +79,8 @@ async function handleQuestEditModal(interaction) {
             ? `✅ ${updatedTitle}`
             : updatedTitle;
         await thread.setName(newThreadName);
-        // BOT が送ったメッセージだけを探す（システムメッセージ回避）
-        const messages = await thread.messages.fetch({ limit: 10 });
-        const botMessage = messages.find((m) => m.author.id === interaction.client.user?.id);
-        if (!botMessage) {
-            return interaction.reply({
-                content: "クエストメッセージが見つかりませんでした。",
-                ephemeral: true,
-            });
-        }
+        // messageId で直接 BOT メッセージを取得（最強・安定版）
+        const botMessage = await thread.messages.fetch(quest.message_id);
         // 最新のクエスト情報を取得して embed 再生成
         const updatedQuestRes = await client_1.db.query("SELECT title, description, points, type, id, forum_thread_id FROM quests WHERE id = $1", [questId]);
         const updatedQuest = updatedQuestRes.rows[0];
