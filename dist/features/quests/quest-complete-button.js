@@ -10,11 +10,12 @@ async function handleQuestCompleteButton(interaction) {
         const customId = interaction.customId;
         if (!customId.startsWith("quest_complete_"))
             return;
-        const threadId = customId.replace("quest_complete_", "");
+        // customId = quest_complete_<questId>
+        const questId = customId.replace("quest_complete_", "");
         const userId = interaction.user.id;
         const username = interaction.user.username;
         // ================================
-        // 1. カテゴリ判定（文明仕様）
+        // 1. カテゴリ判定
         // ================================
         const categoryId = (0, getCategoryId_1.getCategoryId)(interaction.channel);
         if (!categoryId) {
@@ -24,10 +25,10 @@ async function handleQuestCompleteButton(interaction) {
             });
         }
         // ================================
-        // 2. settings 取得（log / ranking）
+        // 2. settings 取得
         // ================================
         const settingsRes = await client_1.db.query("SELECT log_channel_id FROM settings WHERE category_id = $1", [categoryId]);
-        if (settingsRes.rowCount === 0) {
+        if (settingsRes.rows.length === 0) {
             return interaction.reply({
                 content: "このカテゴリは /setup が実行されていません。",
                 ephemeral: true,
@@ -36,16 +37,17 @@ async function handleQuestCompleteButton(interaction) {
         const { log_channel_id } = settingsRes.rows[0];
         const ranking_channel_id = await (0, settingRepository_1.getRankingChannelIdByCategoryId)(categoryId);
         // ================================
-        // 3. クエスト取得
+        // 3. クエスト取得（questId で検索）
         // ================================
-        const questRes = await client_1.db.query("SELECT id, type, points, title, status FROM quests WHERE forum_thread_id = $1", [threadId]);
-        if (questRes.rowCount === 0) {
+        const questRes = await client_1.db.query("SELECT id, type, points, title, status, forum_thread_id FROM quests WHERE id = $1", [questId]);
+        if (questRes.rows.length === 0) {
             return interaction.reply({
                 content: "クエスト情報が見つかりません。",
                 ephemeral: true,
             });
         }
         const quest = questRes.rows[0];
+        const threadId = quest.forum_thread_id;
         if (quest.status === "closed") {
             return interaction.reply({
                 content: "このクエストはすでに終了しています。",
@@ -67,7 +69,7 @@ async function handleQuestCompleteButton(interaction) {
         // ================================
         await client_1.db.query("INSERT INTO quest_logs (user_id, quest_id, points) VALUES ($1,$2,$3)", [userId, quest.id, quest.points]);
         // ================================
-        // 6. users（週間統計のみ更新）
+        // 6. users 更新
         // ================================
         await client_1.db.query(`
       INSERT INTO users (user_id, name, weekly_tasks_completed)
@@ -78,7 +80,7 @@ async function handleQuestCompleteButton(interaction) {
         weekly_tasks_completed = users.weekly_tasks_completed + 1
       `, [userId, username]);
         // ================================
-        // 7. user_stats（ランキング用キャッシュ）
+        // 7. user_stats 更新
         // ================================
         await client_1.db.query(`
       INSERT INTO user_stats (user_id, category_id, total_point, weekly_point, updated_at)
@@ -121,7 +123,7 @@ async function handleQuestCompleteButton(interaction) {
             }
         }
         // ================================
-        // 10. ランキング更新（文明仕様）
+        // 10. ランキング更新
         // ================================
         await rankingService_1.rankingService.updateRealtimeRanking(interaction.client, categoryId, ranking_channel_id);
         return interaction.reply({
