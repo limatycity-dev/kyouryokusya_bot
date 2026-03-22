@@ -32,6 +32,9 @@ export const adminCommand = {
 
     // 共通関数でカテゴリID取得（仕様書準拠）
     const categoryId = await getCategoryId(interaction.channel);
+    console.log("CHANNEL TYPE:", interaction.channel?.type);
+    console.log("CATEGORY ID:", await getCategoryId(interaction.channel));
+    
     if (!categoryId) {
       return interaction.reply({
         content: "このコマンドは文明カテゴリ内で実行してください。",

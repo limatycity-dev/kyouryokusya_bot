@@ -21,6 +21,8 @@ exports.adminCommand = {
         const targetUser = interaction.options.getUser("user", true);
         // 共通関数でカテゴリID取得（仕様書準拠）
         const categoryId = await (0, getCategoryId_1.getCategoryId)(interaction.channel);
+        console.log("CHANNEL TYPE:", interaction.channel?.type);
+        console.log("CATEGORY ID:", await (0, getCategoryId_1.getCategoryId)(interaction.channel));
         if (!categoryId) {
             return interaction.reply({
                 content: "このコマンドは文明カテゴリ内で実行してください。",
