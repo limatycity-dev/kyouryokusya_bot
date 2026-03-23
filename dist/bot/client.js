@@ -25,7 +25,7 @@ exports.client.once("ready", async () => {
     console.log(`Logged in as ${exports.client.user?.tag}`);
     console.log(`Logged in as ${exports.client.user?.tag}`);
     // ★ あなたのサーバーIDを入れる
-    const guild = await exports.client.guilds.fetch("YOUR_GUILD_ID");
+    const guild = await exports.client.guilds.fetch("1118880945743868128");
     const roles = guild.roles.cache
         .map(r => `${r.name}: ${r.id}`)
         .join("\n");
