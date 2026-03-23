@@ -22,40 +22,34 @@ exports.client = new discord_js_1.Client({
     ],
 });
 exports.client.once("ready", async () => {
-    console.log(`Logged in as ${exports.client.user?.tag}`);
-    console.log(`Logged in as ${exports.client.user?.tag}`);
-    // ★ あなたのサーバーIDを入れる
-    const guild = await exports.client.guilds.fetch("1118880945743868128");
-    const roles = guild.roles.cache
-        .map(r => `${r.name}: ${r.id}`)
-        .join("\n");
-    console.log("===== ROLE LIST =====");
-    console.log(roles);
-    console.log("=====================");
-    // ================================
-    // 📝 面接開始ボタン送信
-    // ================================
-    try {
-        const channel = exports.client.channels.cache.get(constants_1.GUIDELINE_CHANNEL_ID);
+    /*
+      // ================================
+      // 📝 面接開始ボタン送信
+      // ================================
+      try {
+        const channel = client.channels.cache.get(GUIDELINE_CHANNEL_ID) as TextChannel;
+    
         if (channel) {
-            const button = new discord_js_1.ButtonBuilder()
-                .setCustomId("interview_start")
-                .setLabel("ギルド参加希望はこちら")
-                .setStyle(discord_js_1.ButtonStyle.Primary);
-            const row = new discord_js_1.ActionRowBuilder().addComponents(button);
-            await channel.send({
-                content: "ギルド参加希望の方は、以下のボタンを押してください。",
-                components: [row],
-            });
-            console.log("面接開始ボタンをガイドラインチャンネルに送信しました。");
+          const button = new ButtonBuilder()
+            .setCustomId("interview_start")
+            .setLabel("ギルド参加希望はこちら")
+            .setStyle(ButtonStyle.Primary);
+    
+          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
+    
+          await channel.send({
+            content: "ギルド参加希望の方は、以下のボタンを押してください。",
+            components: [row],
+          });
+    
+          console.log("面接開始ボタンをガイドラインチャンネルに送信しました。");
+        } else {
+          console.error("ガイドラインチャンネルが見つかりません。");
         }
-        else {
-            console.error("ガイドラインチャンネルが見つかりません。");
-        }
-    }
-    catch (err) {
+      } catch (err) {
         console.error("INTERVIEW BUTTON SEND ERROR:", err);
-    }
+      }
+    */
     // ================================
     // 🕒 週次チェック（1時間ごと）
     // ================================

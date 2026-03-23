@@ -1,4 +1,5 @@
 import { client } from "../bot/client";
+import { GuildMember } from "discord.js";
 
 // Admin commands
 import { registerCommand } from "../features/admin/commands/register";
@@ -100,6 +101,76 @@ client.on("interactionCreate", async (interaction) => {
       await handleQuestEditModal(interaction);
       return;
     }
+
+// ===== MBTI 選択 =====
+if (interaction.isStringSelectMenu() && interaction.customId === "select_mbti") {
+  const selected = interaction.values[0];
+
+  const mbtiRoles = [
+    "1253192472704716814", "1253192639298273461", "1253192877354258522",
+    "1253192971508125726", "1253192722592825427", "1253192793187422259",
+    "1253193058913353821", "1253193157538218055", "1253193251373060116",
+    "1253193599277993995", "1253193331077287956", "1253193679166771331",
+    "1253193449763635251", "1253193741850771467", "1253193520567816215",
+    "1253193818355011584",
+  ];
+
+  if (!interaction.guild) return;
+
+  // ★ GuildMember にキャスト
+  const member = interaction.member as GuildMember;
+
+  // 既存MBTIロールを外す
+  for (const id of mbtiRoles) {
+    if (member.roles.cache.has(id)) {
+      await member.roles.remove(id);
+    }
+  }
+
+  // 新しいMBTIロールを付与
+  await member.roles.add(selected);
+
+  await interaction.reply({
+    content: "MBTI を更新しました。",
+    ephemeral: true,
+  });
+  return;
+}
+
+// ===== デバイス選択 =====
+if (interaction.isStringSelectMenu() && interaction.customId === "select_device") {
+  const selected = interaction.values;
+
+  const deviceRoles = [
+    "1135611937988821173", // PC
+    "1135612058335969372", // Mobile
+  ];
+
+  if (!interaction.guild) return;
+
+  // ★ GuildMember にキャスト
+  const member = interaction.member as GuildMember;
+
+  // 既存デバイスロールを外す
+  for (const id of deviceRoles) {
+    if (member.roles.cache.has(id)) {
+      await member.roles.remove(id);
+    }
+  }
+
+  // 選択されたデバイスロールを付与
+  for (const id of selected) {
+    await member.roles.add(id);
+  }
+
+  await interaction.reply({
+    content: "デバイス情報を更新しました。",
+    ephemeral: true,
+  });
+  return;
+}
+    
+
   } catch (error) {
     console.error("INTERACTION ERROR:", error);
   }

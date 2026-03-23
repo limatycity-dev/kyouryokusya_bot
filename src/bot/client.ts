@@ -21,22 +21,8 @@ export const client = new Client({
 });
 
 client.once("ready", async () => {
-  console.log(`Logged in as ${client.user?.tag}`);
-  console.log(`Logged in as ${client.user?.tag}`);
 
-  // ★ あなたのサーバーIDを入れる
-  const guild = await client.guilds.fetch("1118880945743868128");
-
-  const roles = guild.roles.cache
-    .map(r => `${r.name}: ${r.id}`)
-    .join("\n");
-
-  console.log("===== ROLE LIST =====");
-  console.log(roles);
-  console.log("=====================");
-
-
-
+/*
   // ================================
   // 📝 面接開始ボタン送信
   // ================================
@@ -63,6 +49,7 @@ client.once("ready", async () => {
   } catch (err) {
     console.error("INTERVIEW BUTTON SEND ERROR:", err);
   }
+*/
 
   // ================================
   // 🕒 週次チェック（1時間ごと）
