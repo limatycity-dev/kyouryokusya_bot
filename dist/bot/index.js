@@ -4,58 +4,47 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("../bot/client");
-// Admin commands
 const register_1 = require("../features/admin/commands/register");
 const setup_1 = require("../features/admin/commands/setup");
 const admin_1 = require("../features/admin/admin");
-// Ranking commands
 const ranking_1 = require("../features/ranking/commands/ranking");
 const rankingInit_1 = require("../features/ranking/commands/rankingInit");
 const rankingWeekly_1 = require("../features/ranking/commands/rankingWeekly");
-// Quest commands
 const quest_create_1 = require("../features/quests/quest-create");
-// Quest buttons
 const quest_complete_button_1 = require("../features/quests/quest-complete-button");
 const quest_close_button_1 = require("../features/quests/quest-close-button");
 const quest_edit_button_1 = require("../features/quests/quest-edit-button");
-// Ranking button（新仕様）
 const rankingRedreshButton_1 = require("../features/ranking/ui/rankingRedreshButton");
-// Quest modals
 const quest_create_modal_1 = require("../features/quests/quest-create-modal");
 const quest_edit_modal_1 = require("../features/quests/quest-edit-modal");
-// ===== 面接機能 =====
 const start_1 = __importDefault(require("../features/interview/buttons/start"));
 const close_1 = require("../features/interview/commands/close");
+// ★ 追加
+const profileSetup_1 = require("../features/profile/commands/profileSetup");
 client_1.client.on("interactionCreate", async (interaction) => {
     try {
         // Slash Commands
         if (interaction.isChatInputCommand()) {
             switch (interaction.commandName) {
                 case "register":
-                    await register_1.registerCommand.execute(interaction);
-                    return;
+                    return register_1.registerCommand.execute(interaction);
                 case "setup":
-                    await setup_1.setupCommand.execute(interaction);
-                    return;
+                    return setup_1.setupCommand.execute(interaction);
                 case "quest-create":
-                    await quest_create_1.questCreateCommand.execute(interaction);
-                    return;
+                    return quest_create_1.questCreateCommand.execute(interaction);
                 case "admin":
-                    await admin_1.adminCommand.execute(interaction);
-                    return;
+                    return admin_1.adminCommand.execute(interaction);
                 case "ranking":
-                    await ranking_1.rankingCommand.execute(interaction, client_1.client);
-                    return;
+                    return ranking_1.rankingCommand.execute(interaction, client_1.client);
                 case "ranking-init":
-                    await rankingInit_1.rankingInitCommand.execute(interaction, client_1.client);
-                    return;
+                    return rankingInit_1.rankingInitCommand.execute(interaction, client_1.client);
                 case "ranking-weekly":
-                    await rankingWeekly_1.rankingWeeklyCommand.execute(interaction, client_1.client);
-                    return;
-                // ===== 面接終了コマンド =====
+                    return rankingWeekly_1.rankingWeeklyCommand.execute(interaction, client_1.client);
                 case "interview-close":
-                    await close_1.interviewCloseCommand.execute(interaction);
-                    return;
+                    return close_1.interviewCloseCommand.execute(interaction);
+                // ★ 追加
+                case "profile-setup":
+                    return profileSetup_1.profileSetupCommand.execute(interaction);
                 default:
                     return;
             }
@@ -95,48 +84,40 @@ client_1.client.on("interactionCreate", async (interaction) => {
             ];
             if (!interaction.guild)
                 return;
-            // ★ GuildMember にキャスト
             const member = interaction.member;
-            // 既存MBTIロールを外す
             for (const id of mbtiRoles) {
                 if (member.roles.cache.has(id)) {
                     await member.roles.remove(id);
                 }
             }
-            // 新しいMBTIロールを付与
             await member.roles.add(selected);
-            await interaction.reply({
+            return interaction.reply({
                 content: "MBTI を更新しました。",
                 ephemeral: true,
             });
-            return;
         }
         // ===== デバイス選択 =====
         if (interaction.isStringSelectMenu() && interaction.customId === "select_device") {
             const selected = interaction.values;
             const deviceRoles = [
-                "1135611937988821173", // PC
-                "1135612058335969372", // Mobile
+                "1135611937988821173",
+                "1135612058335969372",
             ];
             if (!interaction.guild)
                 return;
-            // ★ GuildMember にキャスト
             const member = interaction.member;
-            // 既存デバイスロールを外す
             for (const id of deviceRoles) {
                 if (member.roles.cache.has(id)) {
                     await member.roles.remove(id);
                 }
             }
-            // 選択されたデバイスロールを付与
             for (const id of selected) {
                 await member.roles.add(id);
             }
-            await interaction.reply({
+            return interaction.reply({
                 content: "デバイス情報を更新しました。",
                 ephemeral: true,
             });
-            return;
         }
     }
     catch (error) {
