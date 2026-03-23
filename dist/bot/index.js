@@ -62,13 +62,17 @@ client_1.client.on("interactionCreate", async (interaction) => {
         }
         // Buttons
         if (interaction.isButton()) {
-            await (0, quest_complete_button_1.handleQuestCompleteButton)(interaction);
-            await (0, quest_close_button_1.handleQuestCloseButton)(interaction);
-            await (0, quest_edit_button_1.handleQuestEditButton)(interaction);
-            await (0, rankingRedreshButton_1.handleRankingRefreshButton)(interaction, client_1.client);
-            // ===== 面接開始ボタン =====
-            if (interaction.customId === "interview_start") {
-                await (0, start_1.default)(interaction);
+            switch (interaction.customId) {
+                case "quest_complete":
+                    return (0, quest_complete_button_1.handleQuestCompleteButton)(interaction);
+                case "quest_close":
+                    return (0, quest_close_button_1.handleQuestCloseButton)(interaction);
+                case "quest_edit":
+                    return (0, quest_edit_button_1.handleQuestEditButton)(interaction);
+                case "ranking_refresh":
+                    return (0, rankingRedreshButton_1.handleRankingRefreshButton)(interaction, client_1.client);
+                case "interview_start":
+                    return (0, start_1.default)(interaction);
             }
             return;
         }

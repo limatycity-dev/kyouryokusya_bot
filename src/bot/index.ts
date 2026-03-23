@@ -74,14 +74,21 @@ client.on("interactionCreate", async (interaction) => {
 
     // Buttons
     if (interaction.isButton()) {
-      await handleQuestCompleteButton(interaction);
-      await handleQuestCloseButton(interaction);
-      await handleQuestEditButton(interaction);
-      await handleRankingRefreshButton(interaction, client);
+      switch (interaction.customId) {
+        case "quest_complete":
+          return handleQuestCompleteButton(interaction);
 
-      // ===== 面接開始ボタン =====
-      if (interaction.customId === "interview_start") {
-        await startInterview(interaction);
+        case "quest_close":
+          return handleQuestCloseButton(interaction);
+
+        case "quest_edit":
+          return handleQuestEditButton(interaction);
+
+        case "ranking_refresh":
+          return handleRankingRefreshButton(interaction, client);
+
+        case "interview_start":
+          return startInterview(interaction);
       }
 
       return;
@@ -89,11 +96,11 @@ client.on("interactionCreate", async (interaction) => {
 
     // Modals
     if (interaction.isModalSubmit()) {
-      await handleQuestCreateModal(interaction);
-      await handleQuestEditModal(interaction);
-      return;
-    }
-  } catch (error) {
-    console.error("INTERACTION ERROR:", error);
+    await handleQuestCreateModal(interaction);
+    await handleQuestEditModal(interaction);
+    return;
   }
+} catch (error) {
+  console.error("INTERACTION ERROR:", error);
+}
 });
