@@ -10,7 +10,10 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const rankingService_1 = require("../features/ranking/services/rankingService");
 const weeklyReportService_1 = require("../features/ranking/services/weeklyReportService");
 const settingRepository_1 = require("../features/ranking/repository/settingRepository");
+// ★ 面接機能
+const constants_1 = require("../features/interview/config/constants");
 dotenv_1.default.config();
+console.log("GUIDELINE_CHANNEL_ID:", constants_1.GUIDELINE_CHANNEL_ID);
 exports.client = new discord_js_1.Client({
     intents: [
         discord_js_1.GatewayIntentBits.Guilds,
@@ -21,22 +24,42 @@ exports.client = new discord_js_1.Client({
 exports.client.once("ready", async () => {
     console.log(`Logged in as ${exports.client.user?.tag}`);
     // ================================
+    // 📝 面接開始ボタン送信
+    // ================================
+    try {
+        const channel = exports.client.channels.cache.get(constants_1.GUIDELINE_CHANNEL_ID);
+        if (channel) {
+            const button = new discord_js_1.ButtonBuilder()
+                .setCustomId("interview_start")
+                .setLabel("ギルド参加希望はこちら")
+                .setStyle(discord_js_1.ButtonStyle.Primary);
+            const row = new discord_js_1.ActionRowBuilder().addComponents(button);
+            await channel.send({
+                content: "ギルド参加希望の方は、以下のボタンを押してください。",
+                components: [row],
+            });
+            console.log("面接開始ボタンをガイドラインチャンネルに送信しました。");
+        }
+        else {
+            console.error("ガイドラインチャンネルが見つかりません。");
+        }
+    }
+    catch (err) {
+        console.error("INTERVIEW BUTTON SEND ERROR:", err);
+    }
+    // ================================
     // 🕒 週次チェック（1時間ごと）
     // ================================
     setInterval(async () => {
         try {
-            // 1. 週が変わったかどうか判定
             const changed = await rankingService_1.rankingService.ensureWeeklyResetIfNeeded();
             if (!changed)
                 return;
             console.log("Weekly reset detected. Running weekly tasks...");
-            // 2. 全カテゴリを取得（文明カテゴリが複数ある場合に対応）
             const categories = await (0, settingRepository_1.getAllCategories)();
             for (const c of categories) {
                 const { category_id, ranking_channel_id } = c;
-                // 3. 週間レポート投稿（履歴として残す）
                 await weeklyReportService_1.weeklyReportService.postWeeklyReport(exports.client, category_id);
-                // 4. ランキング（複合）更新（固定メッセージを上書き）
                 await rankingService_1.rankingService.updateRankingCombined(exports.client, category_id, ranking_channel_id);
             }
             console.log("Weekly reset + report + ranking updated");
@@ -44,6 +67,6 @@ exports.client.once("ready", async () => {
         catch (err) {
             console.error("Weekly interval error:", err);
         }
-    }, 1000 * 60 * 60); // 1時間ごと
+    }, 1000 * 60 * 60);
 });
 exports.client.login(process.env.DISCORD_TOKEN);
