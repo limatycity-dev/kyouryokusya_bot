@@ -96,11 +96,11 @@ client.on("interactionCreate", async (interaction) => {
 
     // Modals
     if (interaction.isModalSubmit()) {
-    await handleQuestCreateModal(interaction);
-    await handleQuestEditModal(interaction);
-    return;
+      await handleQuestCreateModal(interaction);
+      await handleQuestEditModal(interaction);
+      return;
+    }
+  } catch (error) {
+    console.error("INTERACTION ERROR:", error);
   }
-} catch (error) {
-  console.error("INTERACTION ERROR:", error);
-}
 });

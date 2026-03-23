@@ -23,6 +23,15 @@ exports.client = new discord_js_1.Client({
 });
 exports.client.once("ready", async () => {
     console.log(`Logged in as ${exports.client.user?.tag}`);
+    console.log(`Logged in as ${exports.client.user?.tag}`);
+    // ★ あなたのサーバーIDを入れる
+    const guild = await exports.client.guilds.fetch("YOUR_GUILD_ID");
+    const roles = guild.roles.cache
+        .map(r => `${r.name}: ${r.id}`)
+        .join("\n");
+    console.log("===== ROLE LIST =====");
+    console.log(roles);
+    console.log("=====================");
     // ================================
     // 📝 面接開始ボタン送信
     // ================================
