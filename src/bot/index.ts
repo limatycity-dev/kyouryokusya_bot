@@ -25,6 +25,10 @@ import { handleRankingRefreshButton } from "../features/ranking/ui/rankingRedres
 import { handleQuestCreateModal } from "../features/quests/quest-create-modal";
 import { handleQuestEditModal } from "../features/quests/quest-edit-modal";
 
+// ===== 面接機能 =====
+import startInterview from "../features/interview/buttons/start";
+import { interviewCloseCommand } from "../features/interview/commands/close";
+
 client.on("interactionCreate", async (interaction) => {
   try {
     // Slash Commands
@@ -58,6 +62,11 @@ client.on("interactionCreate", async (interaction) => {
           await rankingWeeklyCommand.execute(interaction, client);
           return;
 
+        // ===== 面接終了コマンド =====
+        case "interview-close":
+          await interviewCloseCommand.execute(interaction);
+          return;
+
         default:
           return;
       }
@@ -69,6 +78,12 @@ client.on("interactionCreate", async (interaction) => {
       await handleQuestCloseButton(interaction);
       await handleQuestEditButton(interaction);
       await handleRankingRefreshButton(interaction, client);
+
+      // ===== 面接開始ボタン =====
+      if (interaction.customId === "interview_start") {
+        await startInterview(interaction);
+      }
+
       return;
     }
 

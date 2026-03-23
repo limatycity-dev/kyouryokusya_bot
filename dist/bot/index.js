@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("../bot/client");
 // Admin commands
@@ -20,6 +23,9 @@ const rankingRedreshButton_1 = require("../features/ranking/ui/rankingRedreshBut
 // Quest modals
 const quest_create_modal_1 = require("../features/quests/quest-create-modal");
 const quest_edit_modal_1 = require("../features/quests/quest-edit-modal");
+// ===== 面接機能 =====
+const start_1 = __importDefault(require("../features/interview/buttons/start"));
+const close_1 = require("../features/interview/commands/close");
 client_1.client.on("interactionCreate", async (interaction) => {
     try {
         // Slash Commands
@@ -46,6 +52,10 @@ client_1.client.on("interactionCreate", async (interaction) => {
                 case "ranking-weekly":
                     await rankingWeekly_1.rankingWeeklyCommand.execute(interaction, client_1.client);
                     return;
+                // ===== 面接終了コマンド =====
+                case "interview-close":
+                    await close_1.interviewCloseCommand.execute(interaction);
+                    return;
                 default:
                     return;
             }
@@ -56,6 +66,10 @@ client_1.client.on("interactionCreate", async (interaction) => {
             await (0, quest_close_button_1.handleQuestCloseButton)(interaction);
             await (0, quest_edit_button_1.handleQuestEditButton)(interaction);
             await (0, rankingRedreshButton_1.handleRankingRefreshButton)(interaction, client_1.client);
+            // ===== 面接開始ボタン =====
+            if (interaction.customId === "interview_start") {
+                await (0, start_1.default)(interaction);
+            }
             return;
         }
         // Modals

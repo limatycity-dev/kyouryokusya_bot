@@ -11,6 +11,9 @@ import { rankingWeeklyCommand } from "./src/features/ranking/commands/rankingWee
 import { questCreateCommand } from "./src/features/quests/quest-create";
 import { adminCommand } from "./src/features/admin/admin";
 
+// ★ 面接コマンド
+import { interviewCloseCommand } from "./src/features/interview/commands/close";
+
 dotenv.config();
 
 const commands = [
@@ -19,10 +22,13 @@ const commands = [
   questCreateCommand.data.toJSON(),
   adminCommand.data.toJSON(),
 
-  // ★ ランキングコマンド（data / execute 形式）
+  // ★ ランキングコマンド
   rankingCommand.data.toJSON(),
   rankingInitCommand.data.toJSON(),
   rankingWeeklyCommand.data.toJSON(),
+
+  // ★ 面接コマンド
+  interviewCloseCommand.data.toJSON(),
 ];
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN!);
