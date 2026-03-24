@@ -15,9 +15,9 @@
 - [08_features](spec/08_features.md)
 
 ## 🏛 文化（Culture）
-- [文化の原則]準備中
-- [歴史]準備中
-- [用語集]準備中
+- [文化の原則](docs\culture\00_overview.md)
+- [スタンス](docs\culture\01_stance.md)
+- [歴史](docs\culture\02_history.md)
 
 ## ✍ コラム（Columns）
 - [コラム一覧]準備中
