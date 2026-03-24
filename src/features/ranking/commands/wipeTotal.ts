@@ -25,7 +25,7 @@ export const wipeTotalCommand = {
             }
 
             // 管理者チェック
-            const ok = await isAdmin(interaction.user.id, interaction.guildId!);
+            const ok = await isAdmin(interaction.user.id, categoryId);
             if (!ok) {
                 return interaction.reply({
                     content: "あなたはこの文明の管理者ではありません。",
