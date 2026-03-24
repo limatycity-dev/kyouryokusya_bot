@@ -1,9 +1,9 @@
 import { db } from "./client";
 
-export async function getGuildSettings(guildId: string) {
+export async function getSettingsByCategory(categoryId: string) {
   const result = await db.query(
-    "SELECT ranking_channel_id FROM settings WHERE guild_id = $1",
-    [guildId]
+    "SELECT ranking_channel_id FROM settings WHERE category_id = $1",
+    [categoryId]
   );
 
   if ((result.rowCount ?? 0) === 0) return null;
