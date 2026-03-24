@@ -161,6 +161,10 @@ CREATE TABLE user_stats (
 - weekly_point は週次リセット対象  
 - 履歴は保持しない（常に最新状態のみ）
 
+### 補足：累計ポイントワイプ機能
+- users.total_points は累計ポイントの唯一の正規データである。
+- user_stats.total_point は高速化キャッシュであり、ワイプ時には users.total_points と同時に 0 に更新する必要がある。
+
 ---
 
 # 8. テーブル間の関係図（概念）

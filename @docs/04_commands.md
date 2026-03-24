@@ -59,6 +59,30 @@ name（string, 必須）: カテゴリ名（50文字以内）
 
 ---
 
+## 1.3 /reset-total-points（新規）
+累計ポイント（users.total_points および user_stats.total_point）をワイプする管理者専用コマンド。
+
+### 目的
+- 文明の累計ポイントをリセットし、新しいシーズンや区切りを開始するために使用する。
+- ランキングの累計値を初期化し、再スタートを可能にする。
+
+### 権限
+- 管理者（Administrator）
+
+### 引数
+- なし
+
+### 実行結果
+- users.total_points を 0 に更新
+- user_stats.total_point を 0 に更新
+- ランキングメッセージを再描画（updateRealtimeRanking() を呼び出す）
+- 成功メッセージを ephemeral で返す
+
+### エラーパターン
+- DB 更新失敗 → 「エラーが発生しました。もう一度お試しください。」（赤系 Embed）
+
+ｰｰｰ
+
 # 2. クエストコマンド（/quest）
 
 クエスト（タスク）を作成・編集・完了するためのコマンド群。

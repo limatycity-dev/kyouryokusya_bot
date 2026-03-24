@@ -154,6 +154,23 @@ rankingWeekly.ts を実行
 
 ---
 
+## 3.4 累計ポイントワイプフロー（/reset-total-points）
+管理者が累計ポイントをリセットするためのフロー。
+
+### 実行フロー
+/reset-total-points 実行
+→ users.total_points を全ユーザー 0 に更新
+→ user_stats.total_point を全ユーザー 0 に更新
+→ ランキング（総合）を再描画
+→ 成功メッセージを返す（ephemeral）
+
+### 特徴
+- 履歴（quest_logs）は削除しない
+- weekly_points など週次統計には影響しない
+- 文明の「累計ランキング」を新しいシーズンとして再スタートできる
+
+ｰｰｰ
+
 # 4. ユーザー登録フロー
 
 ユーザーは以下のいずれかで登録される。
