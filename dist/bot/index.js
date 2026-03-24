@@ -51,17 +51,21 @@ client_1.client.on("interactionCreate", async (interaction) => {
         }
         // Buttons
         if (interaction.isButton()) {
-            switch (interaction.customId) {
-                case "quest_complete":
-                    return (0, quest_complete_button_1.handleQuestCompleteButton)(interaction);
-                case "quest_close":
-                    return (0, quest_close_button_1.handleQuestCloseButton)(interaction);
-                case "quest_edit":
-                    return (0, quest_edit_button_1.handleQuestEditButton)(interaction);
-                case "ranking_refresh":
-                    return (0, rankingRedreshButton_1.handleRankingRefreshButton)(interaction, client_1.client);
-                case "interview_start":
-                    return (0, start_1.default)(interaction);
+            const id = interaction.customId;
+            if (id.startsWith("quest_complete")) {
+                return (0, quest_complete_button_1.handleQuestCompleteButton)(interaction);
+            }
+            if (id.startsWith("quest_close")) {
+                return (0, quest_close_button_1.handleQuestCloseButton)(interaction);
+            }
+            if (id.startsWith("quest_edit")) {
+                return (0, quest_edit_button_1.handleQuestEditButton)(interaction);
+            }
+            if (id === "ranking_refresh") {
+                return (0, rankingRedreshButton_1.handleRankingRefreshButton)(interaction, client_1.client);
+            }
+            if (id === "interview_start") {
+                return (0, start_1.default)(interaction);
             }
             return;
         }

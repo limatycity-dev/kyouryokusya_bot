@@ -66,22 +66,28 @@ client.on("interactionCreate", async (interaction) => {
 
     // Buttons
     if (interaction.isButton()) {
-      switch (interaction.customId) {
-        case "quest_complete":
-          return handleQuestCompleteButton(interaction);
+      const id = interaction.customId;
 
-        case "quest_close":
-          return handleQuestCloseButton(interaction);
-
-        case "quest_edit":
-          return handleQuestEditButton(interaction);
-
-        case "ranking_refresh":
-          return handleRankingRefreshButton(interaction, client);
-
-        case "interview_start":
-          return startInterview(interaction);
+      if (id.startsWith("quest_complete")) {
+        return handleQuestCompleteButton(interaction);
       }
+
+      if (id.startsWith("quest_close")) {
+        return handleQuestCloseButton(interaction);
+      }
+
+      if (id.startsWith("quest_edit")) {
+        return handleQuestEditButton(interaction);
+      }
+
+      if (id === "ranking_refresh") {
+        return handleRankingRefreshButton(interaction, client);
+      }
+
+      if (id === "interview_start") {
+        return startInterview(interaction);
+      }
+
       return;
     }
 
