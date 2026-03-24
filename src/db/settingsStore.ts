@@ -1,6 +1,6 @@
 import { db } from "./client";
 
-export async function getSettingsByCategory(categoryId: string) {
+export async function getRankingChannelIdByCategory(categoryId: string) {
   const result = await db.query(
     "SELECT ranking_channel_id FROM settings WHERE category_id = $1",
     [categoryId]

@@ -4,7 +4,7 @@ import {
 } from "discord.js";
 
 import { wipeService } from "../services/wipeService";
-import { getGuildSettings } from "../../../db/settingsStore";
+import { getRankingChannelIdByCategory } from "../../../db/settingsStore";
 import { getCategoryId } from "../../../utils/getCategoryId";
 import { isAdmin } from "../../../utils/isAdmin";
 
@@ -34,7 +34,7 @@ export const wipeTotalCommand = {
             }
 
             // ランキングチャンネル取得
-            const settings = await getGuildSettings(interaction.guildId!);
+            const settings = await getRankingChannelIdByCategory(interaction.guildId!);
             const rankingChannelId = settings?.rankingChannelId;
 
 
