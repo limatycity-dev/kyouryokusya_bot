@@ -98,4 +98,16 @@ export const rankingRepository = {
       [key, value]
     );
   },
+
+  async resetTotalPoints(categoryId: string): Promise<void> {
+    await db.query(
+      `
+      UPDATE user_stats
+      SET total_point = 0
+      WHERE category_id = $1
+      `,
+      [categoryId]
+    );
+  },
+
 };

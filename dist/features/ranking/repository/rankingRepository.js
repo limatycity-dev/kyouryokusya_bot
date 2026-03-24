@@ -59,4 +59,11 @@ exports.rankingRepository = {
       DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
       `, [key, value]);
     },
+    async resetTotalPoints(categoryId) {
+        await client_1.db.query(`
+      UPDATE user_stats
+      SET total_point = 0
+      WHERE category_id = $1
+      `, [categoryId]);
+    },
 };

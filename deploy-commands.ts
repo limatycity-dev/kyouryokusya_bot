@@ -17,6 +17,8 @@ import { interviewCloseCommand } from "./src/features/interview/commands/close";
 // ★ プロフィール設定コマンド ← 追加
 import { profileSetupCommand } from "./src/features/profile/commands/profileSetup";
 
+import { wipeTotalCommand } from "./src/features/ranking/commands/wipeTotal";
+
 dotenv.config();
 
 const commands = [
@@ -35,6 +37,8 @@ const commands = [
 
   // ★ プロフィール設定UI ← 追加
   profileSetupCommand.data.toJSON(),
+
+  wipeTotalCommand.data.toJSON(),
 ];
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN!);
