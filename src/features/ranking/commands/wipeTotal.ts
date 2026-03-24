@@ -34,7 +34,7 @@ export const wipeTotalCommand = {
             }
 
             // ランキングチャンネル取得
-            const settings = await getRankingChannelIdByCategory(interaction.guildId!);
+            const settings = await getRankingChannelIdByCategory(categoryId);
             const rankingChannelId = settings?.rankingChannelId;
 
 

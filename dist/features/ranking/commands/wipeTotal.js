@@ -29,7 +29,7 @@ exports.wipeTotalCommand = {
                 });
             }
             // ランキングチャンネル取得
-            const settings = await (0, settingsStore_1.getRankingChannelIdByCategory)(interaction.guildId);
+            const settings = await (0, settingsStore_1.getRankingChannelIdByCategory)(categoryId);
             const rankingChannelId = settings?.rankingChannelId;
             if (!rankingChannelId) {
                 return interaction.reply({
