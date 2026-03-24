@@ -19,6 +19,7 @@ const quest_create_modal_1 = require("../features/quests/quest-create-modal");
 const quest_edit_modal_1 = require("../features/quests/quest-edit-modal");
 const start_1 = __importDefault(require("../features/interview/buttons/start"));
 const close_1 = require("../features/interview/commands/close");
+const wipeTotal_1 = require("../features/ranking/commands/wipeTotal");
 // ★ 追加
 const profileSetup_1 = require("../features/profile/commands/profileSetup");
 client_1.client.on("interactionCreate", async (interaction) => {
@@ -40,6 +41,8 @@ client_1.client.on("interactionCreate", async (interaction) => {
                     return rankingInit_1.rankingInitCommand.execute(interaction, client_1.client);
                 case "ranking-weekly":
                     return rankingWeekly_1.rankingWeeklyCommand.execute(interaction, client_1.client);
+                case "ranking-wipe-total":
+                    return wipeTotal_1.wipeTotalCommand.execute(interaction);
                 case "interview-close":
                     return close_1.interviewCloseCommand.execute(interaction);
                 // ★ 追加

@@ -23,6 +23,8 @@ import { handleQuestEditModal } from "../features/quests/quest-edit-modal";
 import startInterview from "../features/interview/buttons/start";
 import { interviewCloseCommand } from "../features/interview/commands/close";
 
+import { wipeTotalCommand } from "../features/ranking/commands/wipeTotal";
+
 // ★ 追加
 import { profileSetupCommand } from "../features/profile/commands/profileSetup";
 
@@ -52,12 +54,17 @@ client.on("interactionCreate", async (interaction) => {
         case "ranking-weekly":
           return rankingWeeklyCommand.execute(interaction, client);
 
+        case "ranking-wipe-total":
+          return wipeTotalCommand.execute(interaction);
+
         case "interview-close":
           return interviewCloseCommand.execute(interaction);
 
         // ★ 追加
         case "profile-setup":
           return profileSetupCommand.execute(interaction);
+
+
 
         default:
           return;
