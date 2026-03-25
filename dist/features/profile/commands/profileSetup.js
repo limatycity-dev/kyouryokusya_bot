@@ -9,7 +9,6 @@ exports.profileSetupCommand = {
     async execute(interaction) {
         const channelId = "1485613648784396329";
         const channel = await interaction.client.channels.fetch(channelId);
-        // ★ ここで TextChannel に型を絞る
         if (!channel || channel.type !== discord_js_1.ChannelType.GuildText) {
             return interaction.reply({
                 content: "チャンネルが見つからないか、テキストチャンネルではありません。",
@@ -26,6 +25,7 @@ exports.profileSetupCommand = {
 
 - **MBTI**：あなたの思考スタイルを示す指標です（1つだけ選択）
 - **デバイス**：普段使っているプレイ環境です（複数選択可）
+- **得意領域**：あなたの強みや役割を示す項目です（複数選択可）
 
 必要に応じていつでも変更できます。
 あなたらしいスタイルで、気軽に参加してみてください。
@@ -64,10 +64,23 @@ exports.profileSetupCommand = {
             { label: "🖥️ PC", value: "1135611937988821173" },
             { label: "📱 Mobile", value: "1135612058335969372" },
         ]));
-        // ★ send() が安全に使える
+        // ===== 得意領域 セレクトメニュー =====
+        const specialtyMenu = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.StringSelectMenuBuilder()
+            .setCustomId("select_specialty")
+            .setPlaceholder("得意領域を選択（複数可）")
+            .setMinValues(0)
+            .setMaxValues(7)
+            .addOptions([
+            { label: "🎨 デザイン", value: "1486512341787869274" },
+            { label: "📝 文章", value: "1486512580095774880" },
+            { label: "🧠 企画", value: "1486512632897994803" },
+            { label: "💻 技術", value: "1486512684403916913" },
+            { label: "📊 分析", value: "1486512790155034765" },
+            { label: "🤝 相談", value: "1486512883188760637" },
+        ]));
         await textChannel.send({
             content: messageText,
-            components: [mbtiMenu, deviceMenu],
+            components: [mbtiMenu, deviceMenu, specialtyMenu],
         });
         await interaction.reply({
             content: "プロフィール設定UIを送信しました。",
