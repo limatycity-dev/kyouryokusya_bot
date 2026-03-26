@@ -126,6 +126,36 @@ client_1.client.on("interactionCreate", async (interaction) => {
                 ephemeral: true,
             });
         }
+        // ===== 得意領域選択 =====
+        if (interaction.isStringSelectMenu() && interaction.customId === "select_specialty") {
+            const selected = interaction.values;
+            // ★ あしうのロールIDに置き換えてね
+            const specialtyRoles = [
+                "1486512341787869274", // デザイン
+                "1486512580095774880", // 文章
+                "1486512632897994803", // 企画
+                "1486512684403916913", // 技術
+                "1486512790155034765", // 分析
+                "1486512883188760637", // 相談
+            ];
+            if (!interaction.guild)
+                return;
+            const member = interaction.member;
+            // 既存の得意領域ロールを全部外す
+            for (const id of specialtyRoles) {
+                if (member.roles.cache.has(id)) {
+                    await member.roles.remove(id);
+                }
+            }
+            // 選択されたロールを付与
+            for (const id of selected) {
+                await member.roles.add(id);
+            }
+            return interaction.reply({
+                content: "得意領域を更新しました。",
+                ephemeral: true,
+            });
+        }
     }
     catch (error) {
         console.error("INTERACTION ERROR:", error);
