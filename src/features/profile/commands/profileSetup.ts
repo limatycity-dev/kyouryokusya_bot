@@ -86,7 +86,7 @@ export const profileSetupCommand = {
         .setCustomId("select_specialty")
         .setPlaceholder("得意領域を選択（複数可）")
         .setMinValues(0)
-        .setMaxValues(7)
+        .setMaxValues(6)
         .addOptions([
           { label: "🎨 デザイン", value: "1486512341787869274" },
           { label: "📝 文章", value: "1486512580095774880" },
